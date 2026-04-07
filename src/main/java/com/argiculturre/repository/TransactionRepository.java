@@ -28,7 +28,7 @@ public class TransactionRepository {
             ps.setDouble(4, transaction.getAmount());
             ps.setString(5, transaction.getPaymentMethod());
             ps.setDate(6, Date.valueOf(transaction.getTransactionDate()));
-            ps.setString(7, transaction.getDescription());
+            ps.setString(7, transaction.getLabel());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     transaction.setId(rs.getString("id"));
@@ -42,9 +42,10 @@ public class TransactionRepository {
 
     public List<TransactionEntity> findByCollectivityId(String collectivityId, LocalDate from, LocalDate to) {
         List<TransactionEntity> transactions = new ArrayList<>();
-        String sql = "SELECT t.id, t.account_id, t.member_id, t.transaction_type, t.amount, t.payment_method, t.transaction_date, t.label FROM transaction t " +
+        String sql = "SELECT t.id, t.account_id, t.member_id, t.transaction_type, t.amount, t.payment_method, t.transaction_date, t.label " +
+                "FROM transaction t " +
                 "JOIN account a ON t.account_id = a.id " +
-                "WHERE a.entity_id = 'COLLECTIVITY' AND a.entity_id = ? " +
+                "WHERE a.entity_id = ? " +
                 "AND t.transaction_date BETWEEN ? AND ? " +
                 "ORDER BY t.transaction_date DESC";
 
@@ -59,7 +60,7 @@ public class TransactionRepository {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Erreur findByCollectivityId", e);
+            throw new RuntimeException("Erreur findByCollectivityId: " + e.getMessage(), e);
         }
         return transactions;
     }
@@ -73,7 +74,7 @@ public class TransactionRepository {
         t.setAmount(rs.getDouble("amount"));
         t.setPaymentMethod(rs.getString("payment_method"));
         t.setTransactionDate(rs.getDate("transaction_date").toLocalDate());
-        t.setDescription(rs.getString("description"));
+        t.setLabel(rs.getString("label"));
         return t;
     }
 }

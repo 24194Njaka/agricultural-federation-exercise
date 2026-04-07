@@ -177,4 +177,21 @@ public class MemberRepository {
         }
         return members;
     }
+
+    public List<MemberEntity> findByCollectivityId(String collectivityId) {
+        List<MemberEntity> members = new ArrayList<>();
+        String sql = "SELECT id, first_name, last_name, birth_date, gender, address, profession, phone_number, email, membership_date, role, collectivity_id FROM member WHERE collectivity_id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, collectivityId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    members.add(map(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findByCollectivityId: " + e.getMessage(), e);
+        }
+        return members;
+    }
 }

@@ -26,13 +26,11 @@ public class MemberService {
 
     @Transactional
     public MemberResponse createMember(CreateMemberRequest request) {
-        // 1. Vérifier email unique
-        if (memberRepository.existsByEmail(request.getEmail())) {
+         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
 
-        // 2. Vérifier que la collectivité existe
-        CollectivityEntity collectivity = null;
+         CollectivityEntity collectivity = null;
         if (request.getCollectivityId() != null) {
             collectivity = collectivityRepository.findById(request.getCollectivityId());
             if (collectivity == null) {

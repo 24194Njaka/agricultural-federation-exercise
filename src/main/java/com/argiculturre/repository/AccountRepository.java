@@ -61,7 +61,6 @@ public class AccountRepository {
 
     public List<AccountEntity> findByEntity(String entityType, String entityId) {
         List<AccountEntity> accounts = new ArrayList<>();
-        // CORRIGÉ: account au lieu de accounts
         String sql = "SELECT id, entity_id, account_type, account_name, account_holder_name, " +
                 "bank_name, mobile_money_service, phone_number, balance, currency " +
                 "FROM account WHERE entity_id = ?";
@@ -81,7 +80,6 @@ public class AccountRepository {
 
     public List<AccountEntity> findByEntityWithBalanceAtDate(String entityType, String entityId, LocalDate date) {
         List<AccountEntity> accounts = new ArrayList<>();
-        // CORRIGÉ: account au lieu de accounts
         String sql = "SELECT a.id, a.entity_id, a.account_type, a.account_name, a.account_holder_name, " +
                 "a.bank_name, a.mobile_money_service, a.phone_number, a.balance, a.currency, " +
                 "COALESCE((SELECT SUM(CASE WHEN t.transaction_type = 'CONTRIBUTION' THEN t.amount ELSE -t.amount END) " +
@@ -105,7 +103,6 @@ public class AccountRepository {
     }
 
     public boolean hasCashAccount(String entityType, String entityId) {
-        // CORRIGÉ: account au lieu de accounts
         String sql = "SELECT 1 FROM account WHERE entity_id = ? AND account_type = 'CASH'";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -119,7 +116,6 @@ public class AccountRepository {
     }
 
     public void updateBalance(String id, Double newBalance) {
-        // CORRIGÉ: account au lieu de accounts
         String sql = "UPDATE account SET balance = ? WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {

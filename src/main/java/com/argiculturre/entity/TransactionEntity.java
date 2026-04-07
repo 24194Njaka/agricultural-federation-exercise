@@ -16,6 +16,6 @@ public class TransactionEntity {
     private Double amount;
     private String paymentMethod;
     private LocalDate transactionDate;
-    private String description;
+    private String label;
     private LocalDate createdAt;
 }

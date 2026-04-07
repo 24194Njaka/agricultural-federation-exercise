@@ -76,8 +76,7 @@ public class CollectivityService {
         return collectivityRepository.findAll();
     }
 
-    // AJOUTER CETTE MÉTHODE
-    @Transactional
+     @Transactional
     public CollectivityResponse assignIdentity(String id, AssignIdentityRequest request) {
         CollectivityEntity collectivity = collectivityRepository.findById(id);
         if (collectivity == null) {
@@ -174,6 +173,29 @@ public class CollectivityService {
         response.setCreationDate(collectivity.getCreationDate());
         response.setStatus(collectivity.getStatus().name());
         response.setMemberCount(collectivityRepository.countMembers(collectivity.getId()));
+        List<MemberEntity> members = memberRepository.findByCollectivityId(collectivity.getId());
+        if (members != null && !members.isEmpty()) {
+            List<MemberResponse> memberResponses = members.stream()
+                    .map(this::mapMemberToResponse)
+                    .collect(Collectors.toList());
+            response.setMembers(memberResponses);
+        }
+        return response;
+    }
+    private MemberResponse mapMemberToResponse(MemberEntity member) {
+        MemberResponse response = new MemberResponse();
+        response.setId(member.getId());
+        response.setFirstName(member.getFirstName());
+        response.setLastName(member.getLastName());
+        response.setBirthDate(member.getBirthDate());
+        response.setGender(member.getGender().name());
+        response.setAddress(member.getAddress());
+        response.setProfession(member.getProfession());
+        response.setPhone(member.getPhoneNumber());
+        response.setEmail(member.getEmail());
+        response.setMembershipDate(member.getMembershipDate());
+        response.setRole(member.getRole().name());
+        response.setCollectivityId(member.getCollectivityId());
         return response;
     }
 }
