@@ -1,0 +1,407 @@
+openapi: 3.0.3
+
+info:
+  title: Fédération de Collectivités Agricoles - API REST
+  description: >
+    API REST pour la gestion de la fédération de collectivités agricoles à Madagascar.
+    Ce fichier couvre la fonctionnalité A : Ouverture d'une nouvelle collectivité.
+  version: 0.0.1-SNAPSHOT
+  contact:
+    name: com.coletive
+    email: contact@coletive.mg
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Serveur de développement local
+
+tags:
+  - name: Collectivités
+    description: Gestion des collectivités agricoles
+
+# ==============================================================
+# PATHS
+# ==============================================================
+paths:
+
+  /collectivites:
+    get:
+      tags:
+        - Collectivités
+      summary: Lister toutes les collectivités
+      operationId: getAllCollectivites
+      parameters:
+        - name: ville
+          in: query
+          description: Filtrer par ville
+          required: false
+          schema:
+            type: string
+        - name: specialite
+          in: query
+          description: Filtrer par spécialité agricole
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Liste des collectivités récupérée avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CollectiviteResponse"
+                  totalElements:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags:
+        - Collectivités
+      summary: Soumettre une demande d'ouverture d'une nouvelle collectivité
+      description: >
+        Soumet une demande d'ouverture d'une nouvelle collectivité agricole.
+        La demande sera ensuite examinée par la fédération qui délivrera
+        ou non son autorisation formelle. Les conditions suivantes doivent
+        être remplies : au moins 10 membres inscrits avec 6 mois d'ancienneté
+        dans la fédération, les postes spécifiques doivent être occupés,
+        et la localité ainsi que la spécialité agricole doivent être définies.
+      operationId: demanderOuvertureCollectivite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectiviteRequest"
+      responses:
+        "201":
+          description: Demande d'ouverture soumise avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectiviteResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /collectivites/{numeroCollectivite}:
+    get:
+      tags:
+        - Collectivités
+      summary: Obtenir les détails d'une collectivité
+      operationId: getCollectiviteByNumero
+      parameters:
+        - $ref: "#/components/parameters/numeroCollectivite"
+      responses:
+        "200":
+          description: Collectivité trouvée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectiviteResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /collectivites/{numeroCollectivite}/autorisation:
+    patch:
+      tags:
+        - Collectivités
+      summary: Accorder ou refuser l'autorisation formelle d'ouverture
+      description: >
+        Permet à la fédération d'accorder ou de refuser l'autorisation
+        formelle d'ouverture d'une collectivité après vérification
+        des conditions requises.
+      operationId: statuerAutorisationOuverture
+      parameters:
+        - $ref: "#/components/parameters/numeroCollectivite"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutorisationRequest"
+      responses:
+        "200":
+          description: Décision enregistrée avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectiviteResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: La collectivité a déjà été statuée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+# ==============================================================
+# COMPONENTS
+# ==============================================================
+components:
+
+  # ------------------------------------------------------------
+  # PARAMETERS
+  # ------------------------------------------------------------
+  parameters:
+    numeroCollectivite:
+      name: numeroCollectivite
+      in: path
+      required: true
+      description: Numéro unique de la collectivité
+      schema:
+        type: string
+
+  # ------------------------------------------------------------
+  # SCHEMAS
+  # ------------------------------------------------------------
+  schemas:
+
+    # --- Requête de création d'une collectivité ---
+    CollectiviteRequest:
+      type: object
+      required:
+        - nom
+        - ville
+        - specialiteAgricole
+        - dateCreation
+        - membresFondateurs
+        - postesOccupes
+      properties:
+        nom:
+          type: string
+          description: Nom unique de la collectivité
+          example: "Collectivité Verte du Nord"
+        ville:
+          type: string
+          description: Ville où la collectivité exerce
+          example: "Antananarivo"
+        specialiteAgricole:
+          type: string
+          description: Spécialité agricole de la collectivité
+          example: "Riziculture"
+        dateCreation:
+          type: string
+          format: date
+          description: Date de création de la collectivité
+          example: "2026-04-16"
+        membresFondateurs:
+          type: array
+          description: >
+            Liste des IDs des membres fondateurs (minimum 10),
+            chacun devant avoir au moins 6 mois d'ancienneté
+            dans la fédération.
+          minItems: 10
+          items:
+            type: integer
+            format: int64
+          example: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        postesOccupes:
+          $ref: "#/components/schemas/PostesOccupesRequest"
+
+    # --- Postes spécifiques occupés ---
+    PostesOccupesRequest:
+      type: object
+      description: >
+        Membres occupant les postes spécifiques de la collectivité.
+        Ces membres peuvent être inclus dans les 10 membres fondateurs.
+      required:
+        - idPresident
+        - idPresidentAdjoint
+        - idTresorier
+        - idSecretaire
+      properties:
+        idPresident:
+          type: integer
+          format: int64
+          description: ID du membre occupant le poste de président
+          example: 1
+        idPresidentAdjoint:
+          type: integer
+          format: int64
+          description: ID du membre occupant le poste de président adjoint
+          example: 2
+        idTresorier:
+          type: integer
+          format: int64
+          description: ID du membre occupant le poste de trésorier
+          example: 3
+        idSecretaire:
+          type: integer
+          format: int64
+          description: ID du membre occupant le poste de secrétaire
+          example: 4
+
+    # --- Réponse collectivité ---
+    CollectiviteResponse:
+      type: object
+      properties:
+        numeroCollectivite:
+          type: string
+          description: Numéro unique de la collectivité
+          example: "COL-2026-001"
+        nom:
+          type: string
+          example: "Collectivité Verte du Nord"
+        ville:
+          type: string
+          example: "Antananarivo"
+        specialiteAgricole:
+          type: string
+          example: "Riziculture"
+        dateCreation:
+          type: string
+          format: date
+          example: "2026-04-16"
+        statut:
+          $ref: "#/components/schemas/StatutCollectivite"
+        nombreMembres:
+          type: integer
+          description: Nombre total de membres inscrits
+          example: 10
+        postesOccupes:
+          $ref: "#/components/schemas/PostesOccupesResponse"
+
+    # --- Statut d'une collectivité ---
+    StatutCollectivite:
+      type: string
+      description: >
+        Statut de la collectivité :
+        - EN_ATTENTE : demande soumise, en attente d'autorisation de la fédération
+        - AUTORISEE : autorisation accordée par la fédération, collectivité active
+        - REFUSEE : autorisation refusée par la fédération
+      enum:
+        - EN_ATTENTE
+        - AUTORISEE
+        - REFUSEE
+      example: EN_ATTENTE
+
+    # --- Postes occupés en réponse ---
+    PostesOccupesResponse:
+      type: object
+      properties:
+        president:
+          $ref: "#/components/schemas/MembreResume"
+        presidentAdjoint:
+          $ref: "#/components/schemas/MembreResume"
+        tresorier:
+          $ref: "#/components/schemas/MembreResume"
+        secretaire:
+          $ref: "#/components/schemas/MembreResume"
+
+    # --- Résumé d'un membre (pour les postes) ---
+    MembreResume:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        nom:
+          type: string
+          example: "Rakoto"
+        prenom:
+          type: string
+          example: "Jean"
+
+    # --- Requête d'autorisation ---
+    AutorisationRequest:
+      type: object
+      required:
+        - decision
+      properties:
+        decision:
+          type: string
+          enum:
+            - AUTORISEE
+            - REFUSEE
+          description: Décision de la fédération sur la demande d'ouverture
+          example: "AUTORISEE"
+        motifRefus:
+          type: string
+          description: Motif du refus (obligatoire si decision = REFUSEE)
+          example: "Nombre de membres insuffisant"
+
+    # --- Erreur générique ---
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: "Bad Request"
+        message:
+          type: string
+          example: "Les données fournies sont invalides."
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-04-16T10:00:00Z"
+
+  # ------------------------------------------------------------
+  # RESPONSES RÉUTILISABLES
+  # ------------------------------------------------------------
+  responses:
+    BadRequest:
+      description: Données de la requête invalides
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    UnprocessableEntity:
+      description: >
+        Les conditions métier ne sont pas remplies
+        (ex: moins de 10 membres, ancienneté insuffisante, postes non occupés)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalServerError:
+      description: Erreur interne du serveur
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
