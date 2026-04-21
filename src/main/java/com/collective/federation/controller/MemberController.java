@@ -1,6 +1,7 @@
 package com.collective.federation.controller;
 
 import com.collective.federation.entity.Member;
+import com.collective.federation.repository.MemberRepository;
 import com.collective.federation.service.MemberService;
 import lombok.Data;
 import org.springframework.http.ResponseEntity;
@@ -11,9 +12,11 @@ import java.util.List;
 @RequestMapping("/members")
 public class MemberController {
     private final MemberService memberService;
+    private final MemberRepository memberRepository;
 
-    public MemberController(MemberService memberService) {
+    public MemberController(MemberService memberService, MemberRepository memberRepository) {
         this.memberService = memberService;
+        this.memberRepository = memberRepository;
     }
 
     @PostMapping("/register")
@@ -32,5 +35,12 @@ public class MemberController {
     public static class RegistrationRequest {
         private Member member;
         private List<String> refereeIds;
+    }
+
+
+    @GetMapping("/count/{collectivityId}")
+    public ResponseEntity<Integer> getCount(@PathVariable String collectivityId) {
+        int count = memberRepository.countMembersByCollectivity(collectivityId);
+        return ResponseEntity.ok(count);
     }
 }

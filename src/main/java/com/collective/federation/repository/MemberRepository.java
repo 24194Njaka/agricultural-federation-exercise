@@ -35,4 +35,9 @@ public class MemberRepository {
         String sql = "SELECT collectivity_id FROM member WHERE id = ?";
         return jdbc.queryForObject(sql, String.class, memberId);
     }
+
+    public int countMembersByCollectivity(String collectivityId) {
+        String sql = "SELECT count(*) FROM member WHERE collectivity_id = ?";
+        return jdbc.queryForObject(sql, Integer.class, collectivityId);
+    }
 }
