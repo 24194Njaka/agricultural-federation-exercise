@@ -1,5 +1,6 @@
 package com.collective.federation.repository;
 
+ import com.collective.federation.config.DataSourceConfig;
  import com.collective.federation.entity.CollectivityEntity;
 import com.collective.federation.entity.TypeStatus;
 import org.springframework.stereotype.Repository;
@@ -10,7 +11,7 @@ import java.sql.*;
 public class CollectivityRepository {
 
     private Connection getConn() throws SQLException {
-        return com.collective.federation.util.DataSourceConfig.getConnection();
+        return DataSourceConfig.getConnection();
     }
 
     public CollectivityEntity save(CollectivityEntity c) {
