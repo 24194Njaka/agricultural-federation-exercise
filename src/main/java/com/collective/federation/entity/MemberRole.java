@@ -6,5 +6,5 @@ public enum MemberRole {
     TREASURER,
     SECRETARY,
     CONFIRMED_MEMBER,
-    JUNIO_MEMBER
+    JUNIOR_MEMBER
 }
