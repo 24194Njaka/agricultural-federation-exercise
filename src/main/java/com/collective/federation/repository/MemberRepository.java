@@ -1,43 +1,74 @@
 package com.collective.federation.repository;
 
 import com.collective.federation.entity.Member;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import javax.sql.DataSource;
+import java.sql.*;
 
 @Repository
 public class MemberRepository {
-    private final JdbcTemplate jdbc;
 
-    public MemberRepository(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    private final DataSource dataSource;
+
+    public MemberRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     public void save(Member member) {
-        String sql = "INSERT INTO member (id, first_name, last_name, birth_date, gender, address, " +
-                "profession, phone_number, email, occupation, collectivity_id, " +
-                "registration_fee_paid, membership_dues_paid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        jdbc.update(sql,
-                member.getId(), member.getFirstName(), member.getLastName(), member.getBirthDate(),
-                member.getGender(), member.getAddress(), member.getProfession(), member.getPhoneNumber(),
-                member.getEmail(), member.getOccupation(), member.getCollectivityId(),
-                member.isRegistrationFeePaid(), // 50,000 MGA [cite: 89]
-                member.isMembershipDuesPaid()   // Cotisations annuelles [cite: 89]
-        );
-    }
-
-    public void saveReferee(String candidateId, String refereeId, String relationship) {
-        String sql = "INSERT INTO member_referee (candidate_id, referee_id, relationship) VALUES (?, ?, ?)";
-        jdbc.update(sql, candidateId, refereeId, relationship);
+        String sql = "INSERT INTO member (id, first_name, last_name, occupation, collectivity_id, registration_fee_paid, membership_dues_paid) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, member.getId());
+            stmt.setString(2, member.getFirstName());
+            stmt.setString(3, member.getLastName());
+            stmt.setString(4, member.getOccupation());
+            stmt.setString(5, member.getCollectivityId());
+            stmt.setBoolean(6, member.isRegistrationFeePaid());
+            stmt.setBoolean(7, member.isMembershipDuesPaid());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("SQL Error during member save", e);
+        }
     }
 
     public String getCollectivityIdByMemberId(String memberId) {
         String sql = "SELECT collectivity_id FROM member WHERE id = ?";
-        return jdbc.queryForObject(sql, String.class, memberId);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, memberId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getString("collectivity_id");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
+
+    public void saveReferee(String candidateId, String refereeId, String relationship) {
+        String sql = "INSERT INTO member_referee (candidate_id, referee_id, relationship) VALUES (?, ?, ?)";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, candidateId);
+            stmt.setString(2, refereeId);
+            stmt.setString(3, relationship);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public int countMembersByCollectivity(String collectivityId) {
         String sql = "SELECT count(*) FROM member WHERE collectivity_id = ?";
-        return jdbc.queryForObject(sql, Integer.class, collectivityId);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, collectivityId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return 0;
     }
 }

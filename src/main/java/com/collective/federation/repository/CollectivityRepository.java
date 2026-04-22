@@ -1,32 +1,34 @@
 package com.collective.federation.repository;
 
 import com.collective.federation.entity.Collectivity;
-import org.springframework.jdbc.core.JdbcTemplate;
+
 import org.springframework.stereotype.Repository;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 @Repository
 public class CollectivityRepository {
-    private final JdbcTemplate jdbc;
+    private final DataSource dataSource;
 
-    public CollectivityRepository(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public CollectivityRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     public void save(Collectivity collectivity) {
-        String sql = "INSERT INTO collectivity (id, name, location, specialty, federation_approval) " +
-                "VALUES (?, ?, ?, ?, ?)";
-        jdbc.update(sql,
-                collectivity.getId(),
-                collectivity.getName(),
-                collectivity.getLocation(),
-                collectivity.getSpecialty(),
-                collectivity.isFederationApproval()
-        );
-    }
-
-    public boolean existsById(String id) {
-        String sql = "SELECT count(*) FROM collectivity WHERE id = ?";
-        Integer count = jdbc.queryForObject(sql, Integer.class, id);
-        return count != null && count > 0;
+        String sql = "INSERT INTO collectivity (id, name, location, specialty, federation_approval) VALUES (?, ?, ?, ?, ?)";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, collectivity.getId());
+            stmt.setString(2, collectivity.getName());
+            stmt.setString(3, collectivity.getLocation());
+            stmt.setString(4, collectivity.getSpecialty());
+            stmt.setBoolean(5, collectivity.isFederationApproval());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
