@@ -1,6 +1,6 @@
 package com.collective.federation.controller;
 
-import com.collective.federation.entity.Collectivity;
+import com.collective.federation.entity.CollectivityEntity;
 import com.collective.federation.service.CollectivityService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +15,7 @@ public class CollectivityController {
     }
 
     @PostMapping
-    public ResponseEntity<String> create(@RequestBody Collectivity collectivity) {
+    public ResponseEntity<String> create(@RequestBody CollectivityEntity collectivity) {
         try {
             collectivityService.createCollectivity(collectivity);
             return ResponseEntity.ok("Collectivity created successfully!");

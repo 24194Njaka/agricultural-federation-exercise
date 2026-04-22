@@ -10,8 +10,8 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class CollectivityEntity {
     private Long id;
+    private String number;
     private String name;
-    private String location;
     private String specialty;
     private String city;
     private LocalDate creationDate;

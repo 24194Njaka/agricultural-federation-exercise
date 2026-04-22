@@ -9,7 +9,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MemberEntity {
-    private String id;
+    private Long id;
     private String firstName;
     private String lastName;
     private LocalDate birthDate;

@@ -1,27 +1,47 @@
 package com.collective.federation.config;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.util.Properties;
 
-import javax.sql.DataSource;
-
-@Configuration
 public class DataSourceConfig {
 
-    @Bean
-    public DataSource dataSource() {
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        
-        String dbUrl = System.getenv("DB_URL");
-        String dbUsername = System.getenv("DB_USERNAME");
-        String dbPassword = System.getenv("DB_PASSWORD");
+    public static Connection getConnection() {
+        String url = null;
+        String user = null;
+        String pass = null;
 
-        dataSource.setDriverClassName("org.postgresql.Driver");
-        dataSource.setUrl(dbUrl);
-        dataSource.setUsername(dbUsername);
-        dataSource.setPassword(dbPassword);
+        url = System.getenv("JDBC_URL");
+        user = System.getenv("USERNAME");
+        pass = System.getenv("PASSWORD");
 
-        return dataSource;
+        if (url == null || user == null || pass == null) {
+            try (InputStream is = DataSourceConfig.class.getClassLoader().getResourceAsStream("config.properties")) {
+                if (is != null) {
+                    Properties prop = new Properties();
+                    prop.load(is);
+
+                    if (url == null) url = prop.getProperty("jdbc.url");
+                    if (user == null) user = prop.getProperty("jdbc.username");
+                    if (pass == null) pass = prop.getProperty("jdbc.password");
+
+                    if (url == null) url = prop.getProperty("spring.datasource.url");
+                    if (user == null) user = prop.getProperty("spring.datasource.username");
+                    if (pass == null) pass = prop.getProperty("spring.datasource.password");
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        if (url == null || user == null || pass == null) {
+            throw new RuntimeException("Missing DB credentials. Set JDBC_URL, USERNAME, PASSWORD or add jdbc.url/jdbc.username/jdbc.password to application.properties");
+        }
+
+        try {
+            return DriverManager.getConnection(url, user, pass);
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur de connexion DB", e);
+        }
     }
 }
