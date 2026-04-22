@@ -1,6 +1,6 @@
 package com.collective.federation.service;
 
-import com.collective.federation.entity.Member;
+import com.collective.federation.entity.MemberEntity;
 import com.collective.federation.repository.MemberRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +16,7 @@ public class MemberService {
     }
 
     @Transactional // 
-    public void registerMember(Member candidate, List<String> refereeIds) {
+    public void registerMember(MemberEntity candidate, List<String> refereeIds) {
         if (!candidate.isRegistrationFeePaid() || !candidate.isMembershipDuesPaid()) {
             throw new RuntimeException("Admission refused: Fees (50,000 MGA) and Dues must be paid.");
         }

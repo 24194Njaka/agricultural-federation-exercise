@@ -8,19 +8,18 @@ import java.time.LocalDate;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Member {
+public class MemberEntity {
     private String id;
     private String firstName;
     private String lastName;
     private LocalDate birthDate;
-    private String gender; // MALE or FEMALE [cite: 15]
+    private TypeGender gender;
     private String address;
     private String profession;
     private String phoneNumber;
     private String email;
-    private String occupation; // PRESIDENT, JUNIOR, etc. [cite: 16]
-    private String collectivityId; // Foreign key to Collectivity
-    private boolean registrationFeePaid; // 50,000 MGA [cite: 33, 89]
-    private boolean membershipDuesPaid;  // Annual dues [cite: 89]
-    private LocalDate joiningDate;
+    private LocalDate membershipDate;
+    private MemberRole role;
+    private Long collectivityId;
+    private String collectivityName;
 }

@@ -1,6 +1,6 @@
 package com.collective.federation.controller;
 
-import com.collective.federation.entity.Member;
+import com.collective.federation.entity.MemberEntity;
 import com.collective.federation.repository.MemberRepository;
 import com.collective.federation.service.MemberService;
 import lombok.Data;
@@ -33,7 +33,7 @@ public class MemberController {
     // Classe simple pour recevoir le JSON
     @Data
     public static class RegistrationRequest {
-        private Member member;
+        private MemberEntity member;
         private List<String> refereeIds;
     }
 
