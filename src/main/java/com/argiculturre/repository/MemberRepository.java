@@ -1,6 +1,6 @@
 package com.argiculturre.repository;
 
-import com.argiculturre.config.Datasource;
+import com.argiculturre.config.DataSource;
 import com.argiculturre.entity.MemberEntity;
 import com.argiculturre.entity.MemberRole;
 import com.argiculturre.entity.TypeGender;
@@ -12,10 +12,14 @@ import java.util.List;
 
 @Repository
 public class MemberRepository {
+    private final DataSource dataSource;
+    public MemberRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     public MemberEntity save(MemberEntity m) {
         String sql = "INSERT INTO members (first_name, last_name, birth_date, gender, address, profession, phone, email, membership_date, role, collectivity_id) VALUES (?, ?, ?, ?::type_gender, ?, ?, ?, ?, ?, ?::member_role, ?) RETURNING id";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, m.getFirstName());
             ps.setString(2, m.getLastName());
@@ -45,7 +49,7 @@ public class MemberRepository {
 
     public MemberEntity findById(Long id) {
         String sql = "SELECT * FROM members WHERE id = ?";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
@@ -66,7 +70,7 @@ public class MemberRepository {
         String placeholders = String.join(",", ids.stream().map(id -> "?").toArray(String[]::new));
         String sql = "SELECT * FROM members WHERE id IN (" + placeholders + ")";
 
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < ids.size(); i++) {
                 ps.setLong(i + 1, ids.get(i));
@@ -84,7 +88,7 @@ public class MemberRepository {
 
     public boolean existsByEmail(String email) {
         String sql = "SELECT 1 FROM members WHERE email = ?";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
@@ -98,7 +102,7 @@ public class MemberRepository {
     public List<MemberEntity> findConfirmedWithSeniority(LocalDate minDate) {
         List<MemberEntity> members = new ArrayList<>();
         String sql = "SELECT * FROM members WHERE role = ?::member_role AND membership_date <= ?";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, MemberRole.CONFIRMED_MEMBER.name());
             ps.setDate(2, Date.valueOf(minDate));
@@ -115,7 +119,7 @@ public class MemberRepository {
 
     public void updateCollectivityId(Long memberId, Long collectivityId) {
         String sql = "UPDATE members SET collectivity_id = ? WHERE id = ?";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, collectivityId);
             ps.setLong(2, memberId);

@@ -1,6 +1,6 @@
 package com.argiculturre.repository;
 
-import com.argiculturre.config.Datasource;
+import com.argiculturre.config.DataSource;
 import com.argiculturre.entity.CollectivityEntity;
 import com.argiculturre.entity.TypeStatus;
 import org.springframework.stereotype.Repository;
@@ -8,10 +8,15 @@ import java.sql.*;
 
 @Repository
 public class CollectivityRepository {
+    private final DataSource dataSource;
+
+    public CollectivityRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     public CollectivityEntity save(CollectivityEntity c) {
         String sql = "INSERT INTO collectivities (location, creation_date, status) VALUES (?, ?, ?::type_status) RETURNING id";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, c.getLocation());
             ps.setDate(2, Date.valueOf(c.getCreationDate()));
@@ -29,7 +34,7 @@ public class CollectivityRepository {
 
     public CollectivityEntity findById(Long id) {
         String sql = "SELECT id, number, name, location, creation_date, status FROM collectivities WHERE id = ?";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
@@ -45,7 +50,7 @@ public class CollectivityRepository {
 
     public boolean existsByNumber(String number) {
         String sql = "SELECT 1 FROM collectivities WHERE number = ?";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, number);
             try (ResultSet rs = ps.executeQuery()) {
@@ -58,7 +63,7 @@ public class CollectivityRepository {
 
     public boolean existsByName(String name) {
         String sql = "SELECT 1 FROM collectivities WHERE name = ?";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, name);
             try (ResultSet rs = ps.executeQuery()) {
@@ -71,7 +76,7 @@ public class CollectivityRepository {
 
     public void updateNumberAndName(Long id, String number, String name) {
         String sql = "UPDATE collectivities SET number = ?, name = ? WHERE id = ?";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, number);
             ps.setString(2, name);
@@ -84,7 +89,7 @@ public class CollectivityRepository {
 
     public boolean hasNumberAndName(Long id) {
         String sql = "SELECT number, name FROM collectivities WHERE id = ?";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
@@ -100,7 +105,7 @@ public class CollectivityRepository {
 
     public int countMembers(Long collectivityId) {
         String sql = "SELECT COUNT(*) FROM members WHERE collectivity_id = ?";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, collectivityId);
             try (ResultSet rs = ps.executeQuery()) {

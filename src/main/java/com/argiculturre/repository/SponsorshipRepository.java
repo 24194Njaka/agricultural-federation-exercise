@@ -1,16 +1,20 @@
 package com.argiculturre.repository;
 
-import com.argiculturre.config.Datasource;
+import com.argiculturre.config.DataSource;
 import com.argiculturre.entity.SponsorshipEntity;
 import org.springframework.stereotype.Repository;
 import java.sql.*;
 
 @Repository
 public class SponsorshipRepository {
+    private final DataSource dataSource;
+    public SponsorshipRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     public SponsorshipEntity save(SponsorshipEntity s) {
         String sql = "INSERT INTO sponsorships (member_id, sponsor_id, relationship, sponsorship_date) VALUES (?, ?, ?, ?) RETURNING id";
-        try (Connection conn = Datasource.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, s.getMemberId());
             ps.setLong(2, s.getSponsorId());

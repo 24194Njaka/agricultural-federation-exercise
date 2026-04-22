@@ -39,8 +39,8 @@ public class MemberService {
             }
         }
 
-        if (request.getSponsors() == null || request.getSponsors().size() < 2) {
-            throw new RuntimeException("Need at least 2 sponsors");
+        if (request.getCollectivityId() != null && (request.getSponsors() == null || request.getSponsors().size() < 2)) {
+            throw new RuntimeException("Need at least 2 sponsors to join a collectivity");
         }
 
         int fromTarget = 0, fromOther = 0;
