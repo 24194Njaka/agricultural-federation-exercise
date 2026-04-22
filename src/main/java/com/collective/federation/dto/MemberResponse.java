@@ -1,27 +1,19 @@
 package com.collective.federation.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.time.LocalDate;
+import java.util.List;
 
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class MemberResponse {
-    private Long id;
+    private String id;
     private String firstName;
     private String lastName;
-    private LocalDate birthDate;
+    private String birthDate;
     private String gender;
     private String address;
     private String profession;
-    private String phone;
+    private Integer phoneNumber;
     private String email;
-    private LocalDate membershipDate;
-    private String role;
-    private Long collectivityId;
-    private String collectivityName;
+    private String occupation;
+    private List<MemberResponse> referees;
 }
