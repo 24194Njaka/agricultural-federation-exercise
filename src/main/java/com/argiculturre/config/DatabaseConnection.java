@@ -1,31 +1,22 @@
 package com.argiculturre.config;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 
-import org.postgresql.ds.PGSimpleDataSource;
+public class DatabaseConnection {
 
-import javax.sql.DataSource;
-
-public class DataSourceFactory {
-
-    private static PGSimpleDataSource dataSource;
+    private static final String URL = System.getenv("DB_URL");
+    private static final String USER = System.getenv("DB_USER");
+    private static final String PASSWORD = System.getenv("DB_PASSWORD");
 
     static {
-        dataSource = new PGSimpleDataSource();
-
-        String url = System.getenv("DB_URL");
-        String user = System.getenv("DB_USER");
-        String password = System.getenv("DB_PASSWORD");
-
-        if (url == null || user == null || password == null) {
+        if (URL == null || USER == null || PASSWORD == null) {
             throw new RuntimeException("Database environment variables are not set properly");
         }
-
-        dataSource.setURL(url);
-        dataSource.setUser(user);
-        dataSource.setPassword(password);
     }
 
-    public static DataSource getDataSource() {
-        return dataSource;
+    public static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 }
