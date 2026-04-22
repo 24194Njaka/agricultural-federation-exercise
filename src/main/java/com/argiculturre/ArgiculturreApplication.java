@@ -3,11 +3,9 @@ package com.argiculturre;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = {org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration.class})
 public class ArgiculturreApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(ArgiculturreApplication.class, args);
     }
-
 }
