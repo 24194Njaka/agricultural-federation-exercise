@@ -1,0 +1,726 @@
+openapi: 3.1.0
+info:
+  title: Agricultural Federation API
+  description: |
+    # Versioning
+    This API uses semantic versioning (MAJOR.MINOR.PATCH). Available versions are : 
+    - v0.0.1 (2026-04-21) : POST /collectivities and POST /members
+    - v0.0.2 (2026-04-22) : PUT /collectivities/{id}/identity for assigning unique number and name
+    - v0.0.3 (2026-04-22) : POST /accounts, POST /transactions and GET /transactions/cashflow
+    
+    # Business Rules
+    - A collectivity must have a unique number and unique name assigned by the federation
+    - Once assigned, the number and name cannot be changed
+    - A collectivity needs at least 10 members with 5 having 6+ months seniority
+    - A new member needs at least 2 confirmed member sponsors with 90+ days seniority
+    - Sponsors from target collectivity must be >= sponsors from other collectivities
+    - A collectivity can have only one CASH account
+    - Bank account number must have 23 digits (5+5+11+2)
+
+  version: 0.0.3
+  contact:
+    name: Federation Support
+  license:
+    name: Proprietary
+
+servers:
+  - url: 'https://localhost:8080/api'
+    description: Development server
+  - url: 'https://api.federation.mg/v1'
+    description: Production server
+
+tags:
+  - name: Collectivities
+    description: Operations about agricultural collectivities
+  - name: Members
+    description: Operations about members
+  - name: Identity
+    description: Operations about collectivity identity management
+  - name: Accounts
+    description: Operations about financial accounts
+  - name: Transactions
+    description: Operations about contributions and payments
+
+paths:
+  # ==================== COLLECTIVITIES ====================
+  '/collectivities':
+    post:
+      tags:
+        - Collectivities
+      summary: Create collectivities
+      description: |
+        Creates one or more collectivities.
+        During collectivity creation, member IDs are provided to identify existing members.
+        The response includes full member information, not only their IDs.
+      operationId: createCollectivities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateCollectivity'
+      responses:
+        '201':
+          description: Collectivities created successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Collectivity'
+        '400':
+          description: Invalid request - missing federation approval or structure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: One or more members not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== IDENTITY ====================
+  '/collectivities/{id}/identity':
+    put:
+      tags:
+        - Identity
+        - Collectivities
+      summary: Assign unique number and name to a collectivity
+      description: |
+        The federation assigns a unique number and a unique name to a collectivity.
+        Once assigned, the number and name CANNOT be changed.
+        This operation can only be performed once per collectivity.
+      operationId: assignCollectivityIdentity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Collectivity ID
+          example: "123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignIdentityRequest'
+      responses:
+        '200':
+          description: Identity assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collectivity'
+        '400':
+          description: Invalid request - missing number or name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Collectivity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - Number or name already exists, or identity already assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== MEMBERS ====================
+  '/members':
+    post:
+      tags:
+        - Members
+      summary: Create members
+      description: |
+        Creates one or more new members in the federation.
+        New members start as JUNIOR and need sponsors to become confirmed.
+      operationId: createMembers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateMember'
+      responses:
+        '201':
+          description: Members created successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Member'
+        '400':
+          description: |
+            Invalid request - Possible reasons:
+            - Member with bad sponsors (less than 2, or not confirmed members)
+            - Sponsor seniority less than 90 days
+            - Sponsors from target collectivity less than sponsors from other collectivities
+            - Registration fees or membership dues not paid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Collectivity or sponsor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== ACCOUNTS ====================
+  '/accounts':
+    post:
+      tags:
+        - Accounts
+      summary: Create a financial account
+      description: |
+        Creates a new account (CASH, BANK, or MOBILE_MONEY) for a collectivity or the federation.
+        - A collectivity can have only one CASH account
+        - Bank accounts must have a valid RIB format (23 digits)
+        - Mobile money accounts require a valid phone number
+      operationId: createAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          description: Invalid request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - CASH account already exists for this entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== TRANSACTIONS ====================
+  '/transactions':
+    post:
+      tags:
+        - Transactions
+      summary: Record a transaction
+      description: |
+        Records a financial transaction (contribution, payment, or refund).
+        Updates the account balance automatically.
+      operationId: createTransaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionRequest'
+      responses:
+        '201':
+          description: Transaction recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Account or member not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== CASH FLOW ====================
+  '/transactions/cashflow/{collectivityId}':
+    get:
+      tags:
+        - Transactions
+      summary: Get cash flow statement
+      description: |
+        Returns the cash flow statement for a collectivity over a period.
+        Includes total income, total expenses, balance, and all transactions.
+      operationId: getCashFlow
+      parameters:
+        - name: collectivityId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Collectivity ID
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+      responses:
+        '200':
+          description: Cash flow statement retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashFlowResponse'
+        '404':
+          description: Collectivity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    # ========== REQUEST SCHEMAS ==========
+
+    CreateCollectivity:
+      type: object
+      required:
+        - location
+        - members
+        - federationApproval
+        - structure
+      properties:
+        location:
+          type: string
+          description: City where the collectivity operates
+          example: "Antananarivo"
+        members:
+          type: array
+          description: List of member IDs (minimum 10)
+          minItems: 10
+          items:
+            type: string
+          example: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+        federationApproval:
+          type: boolean
+          description: Federation approval for opening the collectivity
+          example: true
+        structure:
+          $ref: '#/components/schemas/CreateCollectivityStructure'
+
+    CreateCollectivityStructure:
+      type: object
+      required:
+        - president
+        - vicePresident
+        - treasurer
+        - secretary
+      properties:
+        president:
+          type: string
+          description: Member ID of the president
+          example: "1"
+        vicePresident:
+          type: string
+          description: Member ID of the vice president
+          example: "2"
+        treasurer:
+          type: string
+          description: Member ID of the treasurer
+          example: "3"
+        secretary:
+          type: string
+          description: Member ID of the secretary
+          example: "4"
+
+    AssignIdentityRequest:
+      type: object
+      required:
+        - number
+        - name
+      properties:
+        number:
+          type: string
+          description: Unique number for the collectivity (assigned by federation)
+          minLength: 1
+          maxLength: 50
+          pattern: '^[A-Z0-9]{3,20}$'
+          example: "COL001"
+        name:
+          type: string
+          description: Unique name for the collectivity (assigned by federation)
+          minLength: 3
+          maxLength: 100
+          example: "Collectivité Agricole d'Antananarivo"
+
+    CreateMember:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/MemberInformation'
+      required:
+        - collectivityIdentifier
+        - referees
+        - registrationFeePaid
+        - membershipDuesPaid
+      properties:
+        collectivityIdentifier:
+          type: string
+          description: ID of the collectivity the member is applying to
+          example: "1"
+        referees:
+          type: array
+          description: List of sponsor member IDs (minimum 2)
+          minItems: 2
+          items:
+            type: string
+          example: ["5", "6"]
+        registrationFeePaid:
+          type: boolean
+          description: Whether registration fee (50,000 MGA) has been paid
+          example: true
+        membershipDuesPaid:
+          type: boolean
+          description: Whether annual membership dues have been paid
+          example: true
+
+    MemberInformation:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - birthDate
+        - gender
+        - address
+        - profession
+        - phoneNumber
+        - email
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Jean"
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Rakoto"
+        birthDate:
+          type: string
+          format: date
+          example: "1980-05-10"
+        gender:
+          $ref: '#/components/schemas/Gender'
+        address:
+          type: string
+          maxLength: 255
+          example: "123 Rue de la Paix, Antananarivo"
+        profession:
+          type: string
+          maxLength: 100
+          example: "Agriculteur"
+        phoneNumber:
+          type: integer
+          description: Phone number (without leading zero)
+          example: 321234567
+        email:
+          type: string
+          format: email
+          example: "jean.rakoto@email.com"
+
+    CreateAccountRequest:
+      type: object
+      required:
+        - entityType
+        - entityId
+        - accountType
+        - accountName
+        - accountHolderName
+      properties:
+        entityType:
+          type: string
+          enum: [COLLECTIVITY, FEDERATION]
+          description: Type of entity owning the account
+        entityId:
+          type: integer
+          description: ID of the entity
+        accountType:
+          type: string
+          enum: [CASH, BANK, MOBILE_MONEY]
+          description: Type of account
+        accountName:
+          type: string
+          description: Name of the account
+        accountHolderName:
+          type: string
+          description: Name of the account holder
+        bankName:
+          type: string
+          description: Bank name (for BANK accounts)
+          enum: [BRED, MCB, BMOI, BOA, BGFI, AFG, ACCES_BANQUE, BAOBAB, SIPEM]
+        bankCode:
+          type: string
+          pattern: '^[0-9]{5}$'
+          description: Bank code (5 digits)
+        branchCode:
+          type: string
+          pattern: '^[0-9]{5}$'
+          description: Branch code (5 digits)
+        accountNumber:
+          type: string
+          pattern: '^[0-9]{11}$'
+          description: Account number (11 digits)
+        ribKey:
+          type: string
+          pattern: '^[0-9]{2}$'
+          description: RIB key (2 digits)
+        mobileMoneyService:
+          type: string
+          enum: [ORANGE_MONEY, MVOLA, AIRTEL_MONEY]
+          description: Mobile money service (for MOBILE_MONEY accounts)
+        phoneNumber:
+          type: string
+          pattern: '^[0-9]{10}$'
+          description: Phone number (10 digits)
+
+    CreateTransactionRequest:
+      type: object
+      required:
+        - accountId
+        - memberId
+        - transactionType
+        - amount
+        - paymentMethod
+        - transactionDate
+      properties:
+        accountId:
+          type: integer
+          description: Account ID
+        memberId:
+          type: integer
+          description: Member ID making the transaction
+        transactionType:
+          type: string
+          enum: [CONTRIBUTION, PAYMENT, REFUND]
+          description: Type of transaction
+        amount:
+          type: number
+          minimum: 0
+          description: Amount in MGA
+        paymentMethod:
+          type: string
+          enum: [CASH, BANK_TRANSFER, MOBILE_MONEY]
+          description: Payment method used
+        transactionDate:
+          type: string
+          format: date
+          description: Date of the transaction
+        description:
+          type: string
+          description: Optional description of the transaction
+
+    # ========== RESPONSE SCHEMAS ==========
+
+    Collectivity:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Collectivity ID
+          example: "1"
+        location:
+          type: string
+          description: City where the collectivity operates
+          example: "Antananarivo"
+        number:
+          type: string
+          description: Unique number assigned by federation
+          example: "COL001"
+        name:
+          type: string
+          description: Unique name assigned by federation
+          example: "Collectivité Agricole d'Antananarivo"
+        structure:
+          $ref: '#/components/schemas/CollectivityStructure'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+
+    CollectivityStructure:
+      type: object
+      properties:
+        president:
+          $ref: '#/components/schemas/Member'
+        vicePresident:
+          $ref: '#/components/schemas/Member'
+        treasurer:
+          $ref: '#/components/schemas/Member'
+        secretary:
+          $ref: '#/components/schemas/Member'
+
+    Member:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/MemberInformation'
+      properties:
+        id:
+          type: string
+          description: Member ID
+          example: "1"
+        occupation:
+          $ref: '#/components/schemas/MemberOccupation'
+        referees:
+          type: array
+          description: List of sponsors who parrained this member
+          items:
+            $ref: '#/components/schemas/Member'
+
+    AccountResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Account ID
+        entityType:
+          type: string
+          enum: [COLLECTIVITY, FEDERATION]
+        entityId:
+          type: integer
+        accountType:
+          type: string
+          enum: [CASH, BANK, MOBILE_MONEY]
+        accountName:
+          type: string
+        accountHolderName:
+          type: string
+        bankName:
+          type: string
+        mobileMoneyService:
+          type: string
+        phoneNumber:
+          type: string
+        balance:
+          type: number
+          description: Current balance in MGA
+        currency:
+          type: string
+          default: "MGA"
+
+    TransactionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: integer
+        memberId:
+          type: integer
+        memberName:
+          type: string
+        transactionType:
+          type: string
+          enum: [CONTRIBUTION, PAYMENT, REFUND]
+        amount:
+          type: number
+        paymentMethod:
+          type: string
+          enum: [CASH, BANK_TRANSFER, MOBILE_MONEY]
+        transactionDate:
+          type: string
+          format: date
+        description:
+          type: string
+
+    CashFlowResponse:
+      type: object
+      properties:
+        collectivityId:
+          type: integer
+        collectivityName:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        totalIncome:
+          type: number
+          description: Total contributions received
+        totalExpense:
+          type: number
+          description: Total payments made
+        balance:
+          type: number
+          description: Net balance (income - expense)
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionResponse'
+
+    # ========== ENUMS ==========
+
+    Gender:
+      type: string
+      enum:
+        - MALE
+        - FEMALE
+
+    MemberOccupation:
+      type: string
+      enum:
+        - JUNIOR
+        - CONFIRMED
+        - SECRETARY
+        - TREASURER
+        - VICE_PRESIDENT
+        - PRESIDENT
+
+    # ========== ERROR SCHEMAS ==========
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-04-22T10:30:00Z"
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: "Bad Request"
+        message:
+          type: string
+          example: "Validation error: need at least 2 sponsors"
+        path:
+          type: string
+          example: "/api/members"
+      required:
+        - timestamp
+        - status
+        - error
+        - message
