@@ -1,0 +1,74 @@
+openapi: 3.0.3
+info:
+  title: Federation Collective API
+  version: 0.0.2
+  description: API pour la gestion de la fédération (Inclusion de la fonctionnalité J)
+
+paths:
+  /collectivities/{id}/federation-assignment:
+    patch:
+      summary: Attribuer un numéro et un nom unique à une collectivité (Fonctionnalité J)
+      description: |
+        Permet à la fédération d'attribuer un numéro officiel et un nom unique. 
+        **Attention** : Ces informations sont immutables une fois fixées.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FederationAssignment'
+      responses:
+        '200':
+          description: Attribution réussie. Retourne l'objet mis à jour.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collectivity'
+        '400':
+          description: Requête invalide (données manquantes).
+        '404':
+          description: Collectivité non trouvée.
+        '409':
+          description: Conflit - Le numéro ou le nom unique a déjà été attribué et ne peut plus être modifié.
+
+components:
+  schemas:
+    FederationAssignment:
+      type: object
+      required:
+        - federationNumber
+        - uniqueName
+      properties:
+        federationNumber:
+          type: string
+          example: "FED-2026-001"
+        uniqueName:
+          type: string
+          example: "COLLECTIVE_ANALAMANGA_ELITE"
+
+    Collectivity:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        location:
+          type: string
+        federationNumber:
+          type: string
+          nullable: true
+        uniqueName:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
