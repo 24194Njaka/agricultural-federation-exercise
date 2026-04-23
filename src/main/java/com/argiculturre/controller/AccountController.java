@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/accounts")
@@ -19,5 +20,17 @@ public class AccountController {
     public ResponseEntity<AccountResponse> createAccount(@RequestBody CreateAccountRequest request) {
         AccountResponse response = accountService.createAccount(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<AccountResponse>> getAllAccounts() {
+         List<AccountResponse> responses = accountService.getAllAccounts();
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<AccountResponse> getAccountById(@PathVariable String id) {
+         AccountResponse response = accountService.getAccountById(id);
+        return ResponseEntity.ok(response);
     }
 }

@@ -30,8 +30,8 @@ public class CollectivityService {
             throw new RuntimeException("Need at least 10 members");
         }
 
-        List<Long> memberIds = request.getMembers().stream()
-                .map(m -> Long.parseLong(String.valueOf(m.getId())))
+        List<String> memberIds = request.getMembers().stream()
+                .map(m -> String.valueOf(m.getId()))
                 .collect(Collectors.toList());
 
         List<MemberEntity> existingMembers = memberRepository.findByIds(memberIds);
@@ -64,7 +64,7 @@ public class CollectivityService {
         CollectivityEntity saved = collectivityRepository.save(collectivity);
 
         for (CreateCollectivityRequest.MemberInfo memberInfo : request.getMembers()) {
-            Long memberId = Long.parseLong(String.valueOf(memberInfo.getId()));
+            String memberId = String.valueOf(memberInfo.getId());
             MemberRole role = MemberRole.valueOf(memberInfo.getRole());
             memberRepository.updateRoleAndCollectivity(memberId, role, saved.getId());
         }
@@ -72,14 +72,13 @@ public class CollectivityService {
         return buildResponse(saved, existingMembers);
     }
 
-    // AJOUTER CETTE MÉTHODE
     public List<CollectivityEntity> getAllCollectivities() {
         return collectivityRepository.findAll();
     }
 
     // AJOUTER CETTE MÉTHODE
     @Transactional
-    public CollectivityResponse assignIdentity(Long id, AssignIdentityRequest request) {
+    public CollectivityResponse assignIdentity(String id, AssignIdentityRequest request) {
         CollectivityEntity collectivity = collectivityRepository.findById(id);
         if (collectivity == null) {
             throw new RuntimeException("Collectivity not found");
@@ -134,7 +133,7 @@ public class CollectivityService {
         return response;
     }
 
-    public CollectivityEntity getCollectivityById(Long id) {
+    public CollectivityEntity getCollectivityById(String id) {
         CollectivityEntity collectivity = collectivityRepository.findById(id);
         if (collectivity == null) {
             throw new RuntimeException("Collectivity not found");
@@ -142,7 +141,7 @@ public class CollectivityService {
         return collectivity;
     }
 
-    public List<FinancialAccountResponse> getFinancialAccounts(Long collectivityId, LocalDate atDate) {
+    public List<FinancialAccountResponse> getFinancialAccounts(String collectivityId, LocalDate atDate) {
         CollectivityEntity collectivity = collectivityRepository.findById(collectivityId);
         if (collectivity == null) {
             throw new RuntimeException("Collectivity not found");
@@ -171,6 +170,7 @@ public class CollectivityService {
         response.setNumber(collectivity.getNumber());
         response.setName(collectivity.getName());
         response.setLocation(collectivity.getLocation());
+        response.setSpecialisation(collectivity.getSpecialisation());
         response.setCreationDate(collectivity.getCreationDate());
         response.setStatus(collectivity.getStatus().name());
         response.setMemberCount(collectivityRepository.countMembers(collectivity.getId()));

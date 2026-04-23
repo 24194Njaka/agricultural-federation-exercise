@@ -5,9 +5,9 @@ import java.time.LocalDate;
 
 @Data
 public class TransactionResponse {
-    private Long id;
-    private Long accountId;
-    private Long memberId;
+    private String id;
+    private String accountId;
+    private String memberId;
     private String memberName;
     private String transactionType;
     private Double amount;

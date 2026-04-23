@@ -120,7 +120,7 @@ public class MemberService {
         return memberRepository.findAll();
     }
 
-    public MemberEntity getMemberById(Long id) {
+    public MemberEntity getMemberById(String id) {
         MemberEntity member = memberRepository.findById(id);
         if (member == null) {
             throw new RuntimeException("Member not found");

@@ -13,16 +13,16 @@ public class SponsorshipRepository {
     }
 
     public SponsorshipEntity save(SponsorshipEntity s) {
-        String sql = "INSERT INTO sponsorships (member_id, sponsor_id, relationship, sponsorship_date) VALUES (?, ?, ?, ?) RETURNING id";
+        String sql = "INSERT INTO sponsorship (member_id, sponsor_id, relationship, sponsorship_date) VALUES (?, ?, ?, ?) RETURNING id";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, s.getMemberId());
-            ps.setLong(2, s.getSponsorId());
+            ps.setString(1, s.getMemberId());
+            ps.setString(2, s.getSponsorId());
             ps.setString(3, s.getRelationship());
             ps.setDate(4, Date.valueOf(s.getSponsorshipDate()));
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    s.setId(rs.getLong("id"));
+                    s.setId(rs.getString("id"));
                 }
             }
             return s;

@@ -9,7 +9,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CollectivityEntity {
-    private Long id;
+    private String id;
     private String number;
     private String name;
     private String location;

@@ -5,7 +5,7 @@ import java.time.LocalDate;
 
 @Data
 public class CreateMembershipFeeRequest {
-    private String name;
+    private String label;
     private Double amount;
     private String frequency;
     private LocalDate startDate;

@@ -35,15 +35,15 @@ public class CollectivityController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CollectivityResponse> getCollectivityById(@PathVariable Long id) {
+    public ResponseEntity<CollectivityResponse> getCollectivityById(@PathVariable String id) {
         CollectivityEntity collectivity = collectivityService.getCollectivityById(id);
         CollectivityResponse response = collectivityService.mapToResponse(collectivity);
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}/identity")
+    @PutMapping("/{id}/informations")
     public ResponseEntity<CollectivityResponse> assignIdentity(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody AssignIdentityRequest request) {
         CollectivityResponse response = collectivityService.assignIdentity(id, request);
         return ResponseEntity.ok(response);

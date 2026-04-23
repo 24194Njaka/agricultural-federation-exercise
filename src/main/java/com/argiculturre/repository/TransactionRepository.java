@@ -18,12 +18,12 @@ public class TransactionRepository {
     }
 
     public TransactionEntity save(TransactionEntity transaction) {
-        String sql = "INSERT INTO transactions (account_id, member_id, transaction_type, amount, payment_method, transaction_date, description) " +
+        String sql = "INSERT INTO transaction (account_id, member_id, transaction_type, amount, payment_method, transaction_date, label) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, transaction.getAccountId());
-            ps.setLong(2, transaction.getMemberId());
+            ps.setString(1, transaction.getAccountId());
+            ps.setString(2, transaction.getMemberId());
             ps.setString(3, transaction.getTransactionType());
             ps.setDouble(4, transaction.getAmount());
             ps.setString(5, transaction.getPaymentMethod());
@@ -31,7 +31,7 @@ public class TransactionRepository {
             ps.setString(7, transaction.getDescription());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    transaction.setId(rs.getLong("id"));
+                    transaction.setId(rs.getString("id"));
                 }
             }
             return transaction;
@@ -40,17 +40,17 @@ public class TransactionRepository {
         }
     }
 
-    public List<TransactionEntity> findByCollectivityId(Long collectivityId, LocalDate from, LocalDate to) {
+    public List<TransactionEntity> findByCollectivityId(String collectivityId, LocalDate from, LocalDate to) {
         List<TransactionEntity> transactions = new ArrayList<>();
-        String sql = "SELECT t.id, t.account_id, t.member_id, t.transaction_type, t.amount, t.payment_method, t.transaction_date, t.description FROM transactions t " +
-                "JOIN accounts a ON t.account_id = a.id " +
-                "WHERE a.entity_type = 'COLLECTIVITY' AND a.entity_id = ? " +
+        String sql = "SELECT t.id, t.account_id, t.member_id, t.transaction_type, t.amount, t.payment_method, t.transaction_date, t.label FROM transaction t " +
+                "JOIN account a ON t.account_id = a.id " +
+                "WHERE a.entity_id = 'COLLECTIVITY' AND a.entity_id = ? " +
                 "AND t.transaction_date BETWEEN ? AND ? " +
                 "ORDER BY t.transaction_date DESC";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, collectivityId);
+            ps.setString(1, collectivityId);
             ps.setDate(2, Date.valueOf(from));
             ps.setDate(3, Date.valueOf(to));
             try (ResultSet rs = ps.executeQuery()) {
@@ -66,9 +66,9 @@ public class TransactionRepository {
 
     private TransactionEntity map(ResultSet rs) throws SQLException {
         TransactionEntity t = new TransactionEntity();
-        t.setId(rs.getLong("id"));
-        t.setAccountId(rs.getLong("account_id"));
-        t.setMemberId(rs.getLong("member_id"));
+        t.setId(rs.getString("id"));
+        t.setAccountId(rs.getString("account_id"));
+        t.setMemberId(rs.getString("member_id"));
         t.setTransactionType(rs.getString("transaction_type"));
         t.setAmount(rs.getDouble("amount"));
         t.setPaymentMethod(rs.getString("payment_method"));

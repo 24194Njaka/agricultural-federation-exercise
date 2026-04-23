@@ -1,7 +1,6 @@
 package com.argiculturre.dto.request;
 
 import lombok.Data;
-
 import java.time.LocalDate;
 import java.util.List;
 
@@ -13,7 +12,7 @@ public class CreateCollectivityRequest {
 
     @Data
     public static class MemberInfo {
-        private Long id;
+        private String id;
         private String firstName;
         private String lastName;
         private LocalDate birthDate;

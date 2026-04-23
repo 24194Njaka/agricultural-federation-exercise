@@ -1,14 +1,18 @@
 package com.argiculturre.entity;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AccountEntity {
-    private Long id;
-    private String entityType; // COLLECTIVITY, FEDERATION
-    private Long entityId;
-    private String accountType; // CASH, BANK, MOBILE_MONEY
+    private String id;
+    private String entityType;
+    private String entityId;
+    private String accountType;
     private String accountName;
     private String accountHolderName;
     private String bankName;
@@ -16,10 +20,10 @@ public class AccountEntity {
     private String branchCode;
     private String accountNumber;
     private String ribKey;
-    private String mobileMoneyService; // ORANGE_MONEY, MVOLA, AIRTEL_MONEY
+    private String mobileMoneyService;
     private String phoneNumber;
     private Double balance;
-    private String currency; // MGA
+    private String currency;
     private LocalDate createdAt;
     private LocalDate updatedAt;
 }

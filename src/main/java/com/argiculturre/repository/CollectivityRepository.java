@@ -18,30 +18,29 @@ public class CollectivityRepository {
     }
 
     public CollectivityEntity save(CollectivityEntity c) {
-        String sql = "INSERT INTO collectivities (number, name, location, creation_date, status) VALUES (?, ?, ?, ?, ?::type_status) RETURNING id";
+        String sql = "INSERT INTO collectivity (id, number, name, location, specialisation, creation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, c.getNumber());
-            ps.setString(2, c.getName());
-            ps.setString(3, c.getLocation());
-            ps.setDate(4, Date.valueOf(c.getCreationDate()));
-            ps.setString(5, c.getStatus().name());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    c.setId(rs.getLong("id"));
-                }
-            }
+            ps.setString(1, c.getId());
+            ps.setString(2, c.getNumber());
+            ps.setString(3, c.getName());
+            ps.setString(4, c.getLocation());
+            ps.setString(5, c.getSpecialisation());
+            ps.setDate(6, Date.valueOf(c.getCreationDate()));
+            ps.setString(7, c.getStatus().name());
+            ps.executeUpdate();
             return c;
         } catch (SQLException e) {
             throw new RuntimeException("Erreur save collectivity", e);
         }
     }
 
-    public CollectivityEntity findById(Long id) {
-        String sql = "SELECT id, number, name, location, creation_date, status FROM collectivities WHERE id = ?";
+    public CollectivityEntity findById(String id) {
+        // CORRIGÉ: espace après location,
+        String sql = "SELECT id, number, name, location, specialisation, creation_date, status FROM collectivity WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, id);
+            ps.setString(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return map(rs);
@@ -54,7 +53,7 @@ public class CollectivityRepository {
     }
 
     public boolean existsByNumber(String number) {
-        String sql = "SELECT 1 FROM collectivities WHERE number = ?";
+        String sql = "SELECT 1 FROM collectivity WHERE number = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, number);
@@ -67,7 +66,7 @@ public class CollectivityRepository {
     }
 
     public boolean existsByName(String name) {
-        String sql = "SELECT 1 FROM collectivities WHERE name = ?";
+        String sql = "SELECT 1 FROM collectivity WHERE name = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, name);
@@ -79,24 +78,24 @@ public class CollectivityRepository {
         }
     }
 
-    public void updateNumberAndName(Long id, String number, String name) {
-        String sql = "UPDATE collectivities SET number = ?, name = ? WHERE id = ?";
+    public void updateNumberAndName(String id, String number, String name) {
+        String sql = "UPDATE collectivity SET number = ?, name = ? WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, number);
             ps.setString(2, name);
-            ps.setLong(3, id);
+            ps.setString(3, id);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Erreur updateNumberAndName", e);
         }
     }
 
-    public boolean hasNumberAndName(Long id) {
-        String sql = "SELECT number, name FROM collectivities WHERE id = ?";
+    public boolean hasNumberAndName(String id) {
+        String sql = "SELECT number, name FROM collectivity WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, id);
+            ps.setString(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return rs.getString("number") != null && rs.getString("name") != null;
@@ -108,11 +107,11 @@ public class CollectivityRepository {
         return false;
     }
 
-    public int countMembers(Long collectivityId) {
-        String sql = "SELECT COUNT(id) FROM members WHERE collectivity_id = ?";
+    public int countMembers(String collectivityId) {
+        String sql = "SELECT COUNT(id) FROM member WHERE collectivity_id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, collectivityId);
+            ps.setString(1, collectivityId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getInt(1);
             }
@@ -124,7 +123,7 @@ public class CollectivityRepository {
 
     public List<CollectivityEntity> findAll() {
         List<CollectivityEntity> collectivities = new ArrayList<>();
-        String sql = "SELECT id, number, name, location, creation_date, status FROM collectivities";
+        String sql = "SELECT id, number, name, location, specialisation, creation_date, status FROM collectivity";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -138,11 +137,18 @@ public class CollectivityRepository {
     }
 
     private CollectivityEntity map(ResultSet rs) throws SQLException {
+        System.out.println("=== MAP DEBUG ===");
+        System.out.println("id: " + rs.getString("id"));
+        System.out.println("name: " + rs.getString("name"));
+        System.out.println("specialisation: " + rs.getString("specialisation"));
+        System.out.println("================");
+
         CollectivityEntity c = new CollectivityEntity();
-        c.setId(rs.getLong("id"));
+        c.setId(rs.getString("id"));
         c.setNumber(rs.getString("number"));
         c.setName(rs.getString("name"));
         c.setLocation(rs.getString("location"));
+        c.setSpecialisation(rs.getString("specialisation"));
         c.setCreationDate(rs.getDate("creation_date").toLocalDate());
         c.setStatus(TypeStatus.valueOf(rs.getString("status")));
         return c;

@@ -6,7 +6,7 @@ import java.util.List;
 
 @Data
 public class CashFlowResponse {
-    private Long collectivityId;
+    private String collectivityId;
     private String collectivityName;
     private LocalDate startDate;
     private LocalDate endDate;

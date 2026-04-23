@@ -15,7 +15,7 @@ public class IdentityService {
     private final CollectivityRepository collectivityRepository;
 
     @Transactional
-    public CollectivityResponse assignIdentity(Long id, AssignIdentityRequest request) {
+    public CollectivityResponse assignIdentity(String id, AssignIdentityRequest request) {
         CollectivityEntity collectivity = collectivityRepository.findById(id);
         if (collectivity == null) {
             throw new RuntimeException("Collectivity not found");

@@ -5,7 +5,7 @@ import java.time.LocalDate;
 
 @Data
 public class MemberResponse {
-    private Long id;
+    private String id;
     private String firstName;
     private String lastName;
     private LocalDate birthDate;
@@ -16,5 +16,5 @@ public class MemberResponse {
     private String email;
     private LocalDate membershipDate;
     private String role;
-    private Long collectivityId;
+    private String collectivityId;
 }

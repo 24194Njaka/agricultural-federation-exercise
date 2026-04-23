@@ -5,8 +5,8 @@ import java.time.LocalDate;
 
 @Data
 public class MembershipFeeResponse {
-    private Long id;
-    private String name;
+    private String id;
+    private String label;
     private Double amount;
     private String frequency;
     private LocalDate startDate;

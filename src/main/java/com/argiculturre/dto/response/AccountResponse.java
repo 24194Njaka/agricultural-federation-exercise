@@ -1,13 +1,12 @@
 package com.argiculturre.dto.response;
 
 import lombok.Data;
-import java.time.LocalDate;
 
 @Data
 public class AccountResponse {
-    private Long id;
+    private String id;
     private String entityType;
-    private Long entityId;
+    private String entityId;
     private String accountType;
     private String accountName;
     private String accountHolderName;

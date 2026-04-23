@@ -5,11 +5,11 @@ import java.time.LocalDate;
 
 @Data
 public class CreateTransactionRequest {
-    private Long accountId;
-    private Long memberId;
-    private String transactionType; // CONTRIBUTION, PAYMENT, REFUND
+    private String accountId;
+    private String memberId;
+    private String transactionType;
     private Double amount;
-    private String paymentMethod; // CASH, BANK_TRANSFER, MOBILE_MONEY
+    private String paymentMethod;
     private LocalDate transactionDate;
     private String description;
 }

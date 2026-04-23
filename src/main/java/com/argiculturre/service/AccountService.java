@@ -7,7 +7,8 @@ import com.argiculturre.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +25,7 @@ public class AccountService {
             }
         }
 
-        // Valider le format du numéro de compte bancaire (23 chiffres)
+        // Valider le format du numéro de compte bancaire
         if ("BANK".equals(request.getAccountType())) {
             validateBankAccount(request);
         }
@@ -35,6 +36,7 @@ public class AccountService {
         }
 
         AccountEntity account = new AccountEntity();
+        account.setId(generateId());
         account.setEntityType(request.getEntityType());
         account.setEntityId(request.getEntityId());
         account.setAccountType(request.getAccountType());
@@ -54,8 +56,28 @@ public class AccountService {
         return mapToResponse(saved);
     }
 
+    // CORRIGÉ: retourne List<AccountResponse>
+    public List<AccountResponse> getAllAccounts() {
+        List<AccountEntity> accounts = accountRepository.findAll();
+        return accounts.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // CORRIGÉ: retourne AccountResponse
+    public AccountResponse getAccountById(String id) {
+        AccountEntity account = accountRepository.findById(id);
+        if (account == null) {
+            throw new RuntimeException("Account not found with id: " + id);
+        }
+        return mapToResponse(account);
+    }
+
+    private String generateId() {
+        return "ACC-" + System.currentTimeMillis();
+    }
+
     private void validateBankAccount(CreateAccountRequest request) {
-        // Vérifier que le numéro de compte a 23 chiffres
         String fullNumber = (request.getBankCode() != null ? request.getBankCode() : "") +
                 (request.getBranchCode() != null ? request.getBranchCode() : "") +
                 (request.getAccountNumber() != null ? request.getAccountNumber() : "") +
@@ -72,7 +94,7 @@ public class AccountService {
         }
     }
 
-    private AccountResponse mapToResponse(AccountEntity account) {
+    public AccountResponse mapToResponse(AccountEntity account) {
         AccountResponse response = new AccountResponse();
         response.setId(account.getId());
         response.setEntityType(account.getEntityType());

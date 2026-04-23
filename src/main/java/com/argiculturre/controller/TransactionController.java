@@ -26,7 +26,7 @@ public class TransactionController {
 
     @GetMapping("/cashflow/{collectivityId}")
     public ResponseEntity<CashFlowResponse> getCashFlow(
-            @PathVariable Long collectivityId,
+            @PathVariable String collectivityId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         CashFlowResponse response = transactionService.getCashFlow(collectivityId, from, to);

@@ -24,7 +24,7 @@ public class PaymentService {
     private final MemberRepository memberRepository;
 
     @Transactional
-    public List<TransactionResponse> createPayments(Long memberId, List<CreatePaymentRequest> requests) {
+    public List<TransactionResponse> createPayments(String memberId, List<CreatePaymentRequest> requests) {
         MemberEntity member = memberRepository.findById(memberId);
         if (member == null) {
             throw new RuntimeException("Member not found");
@@ -35,7 +35,7 @@ public class PaymentService {
                 .collect(Collectors.toList());
     }
 
-    private TransactionResponse createPayment(Long memberId, CreatePaymentRequest request) {
+    private TransactionResponse createPayment(String memberId, CreatePaymentRequest request) {
         AccountEntity account = accountRepository.findById(request.getAccountId());
         if (account == null) {
             throw new RuntimeException("Account not found");

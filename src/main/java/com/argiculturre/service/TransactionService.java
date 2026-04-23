@@ -59,7 +59,7 @@ public class TransactionService {
         return mapToResponse(saved, member);
     }
 
-    public CashFlowResponse getCashFlow(Long collectivityId, LocalDate startDate, LocalDate endDate) {
+    public CashFlowResponse getCashFlow(String collectivityId, LocalDate startDate, LocalDate endDate) {
         // Récupérer tous les comptes de la collectivité
         List<AccountEntity> accounts = accountRepository.findByEntity("COLLECTIVITY", collectivityId);
 
@@ -107,7 +107,7 @@ public class TransactionService {
         return response;
     }
 
-    public List<TransactionResponse> getCollectivityTransactions(Long collectivityId, LocalDate from, LocalDate to) {
+    public List<TransactionResponse> getCollectivityTransactions(String collectivityId, LocalDate from, LocalDate to) {
         List<TransactionEntity> transactions = transactionRepository.findByCollectivityId(collectivityId, from, to);
         return transactions.stream().map(this::mapToResponse).collect(Collectors.toList());
     }

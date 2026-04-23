@@ -2,7 +2,6 @@ package com.argiculturre.repository;
 
 import com.argiculturre.config.DataSource;
 import com.argiculturre.entity.AccountEntity;
-import com.argiculturre.entity.TransactionEntity;
 import org.springframework.stereotype.Repository;
 import java.sql.*;
 import java.time.LocalDate;
@@ -19,59 +18,56 @@ public class AccountRepository {
     }
 
     public AccountEntity save(AccountEntity account) {
-        String sql = "INSERT INTO accounts (entity_type, entity_id, account_type, account_name, account_holder_name, " +
-                "bank_name, bank_code, branch_code, account_number, rib_key, mobile_money_service, phone_number, balance, currency) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+        String sql = "INSERT INTO account (id, entity_id, account_type, account_name, account_holder_name, " +
+                "bank_name, mobile_money_service, phone_number, balance, currency) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, account.getEntityType());
-            ps.setLong(2, account.getEntityId());
-            ps.setString(3, account.getAccountType());
-            ps.setString(4, account.getAccountName());
-            ps.setString(5, account.getAccountHolderName());
-            ps.setString(6, account.getBankName());
-            ps.setString(7, account.getBankCode());
-            ps.setString(8, account.getBranchCode());
-            ps.setString(9, account.getAccountNumber());
-            ps.setString(10, account.getRibKey());
-            ps.setString(11, account.getMobileMoneyService());
-            ps.setString(12, account.getPhoneNumber());
-            ps.setDouble(13, account.getBalance() != null ? account.getBalance() : 0.0);
-            ps.setString(14, account.getCurrency() != null ? account.getCurrency() : "MGA");
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    account.setId(rs.getLong("id"));
-                }
-            }
+
+            ps.setString(1, account.getId());                    // id
+            ps.setString(2, account.getEntityId());              // entity_id
+            ps.setString(3, account.getAccountType());           // account_type
+            ps.setString(4, account.getAccountName());           // account_name
+            ps.setString(5, account.getAccountHolderName());     // account_holder_name
+            ps.setString(6, account.getBankName());              // bank_name
+            ps.setString(7, account.getMobileMoneyService());    // mobile_money_service
+            ps.setString(8, account.getPhoneNumber());           // phone_number
+            ps.setDouble(9, account.getBalance() != null ? account.getBalance() : 0.0);  // balance
+            ps.setString(10, account.getCurrency() != null ? account.getCurrency() : "MGA");  // currency
+
+            ps.executeUpdate();
             return account;
         } catch (SQLException e) {
-            throw new RuntimeException("Erreur save account", e);
+            throw new RuntimeException("Erreur save account: " + e.getMessage(), e);
         }
     }
 
-    public AccountEntity findById(Long id) {
-        String sql = "SELECT id, entity_type, entity_id, account_type, account_name, account_holder_name, bank_name, bank_code, branch_code, account_number, rib_key, mobile_money_service, phone_number, balance, currency FROM accounts WHERE id = ?";
+    public AccountEntity findById(String id) {
+        String sql = "SELECT id, entity_id, account_type, account_name, account_holder_name, bank_name, mobile_money_service, phone_number, balance, currency FROM account WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, id);
+            ps.setString(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return mapAccount(rs);
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Erreur findById", e);
+            throw new RuntimeException("Erreur findById account", e);
         }
         return null;
     }
 
-    public List<AccountEntity> findByEntity(String entityType, Long entityId) {
+    public List<AccountEntity> findByEntity(String entityType, String entityId) {
         List<AccountEntity> accounts = new ArrayList<>();
-        String sql = "SELECT id, entity_type, entity_id, account_type, account_name, account_holder_name, bank_name, bank_code, branch_code, account_number, rib_key, mobile_money_service, phone_number, balance, currency FROM accounts WHERE entity_type = ? AND entity_id = ?";
+        // CORRIGÉ: account au lieu de accounts
+        String sql = "SELECT id, entity_id, account_type, account_name, account_holder_name, " +
+                "bank_name, mobile_money_service, phone_number, balance, currency " +
+                "FROM account WHERE entity_id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, entityType);
-            ps.setLong(2, entityId);
+            ps.setString(1, entityId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     accounts.add(mapAccount(rs));
@@ -83,18 +79,18 @@ public class AccountRepository {
         return accounts;
     }
 
-    public List<AccountEntity> findByEntityWithBalanceAtDate(String entityType, Long entityId, LocalDate date) {
+    public List<AccountEntity> findByEntityWithBalanceAtDate(String entityType, String entityId, LocalDate date) {
         List<AccountEntity> accounts = new ArrayList<>();
-        String sql = "SELECT a.id, a.entity_type, a.entity_id, a.account_type, a.account_name, a.account_holder_name, a.bank_name, a.bank_code, a.branch_code, a.account_number, a.rib_key, a.mobile_money_service, a.phone_number, a.balance, a.currency, " +
+        // CORRIGÉ: account au lieu de accounts
+        String sql = "SELECT a.id, a.entity_id, a.account_type, a.account_name, a.account_holder_name, " +
+                "a.bank_name, a.mobile_money_service, a.phone_number, a.balance, a.currency, " +
                 "COALESCE((SELECT SUM(CASE WHEN t.transaction_type = 'CONTRIBUTION' THEN t.amount ELSE -t.amount END) " +
-                "FROM transactions t WHERE t.account_id = a.id AND t.transaction_date <= ?), 0) as balance_at_date " +
-                "FROM accounts a WHERE a.entity_type = ? AND a.entity_id = ?";
-
+                "FROM transaction t WHERE t.account_id = a.id AND t.transaction_date <= ?), 0) as balance_at_date " +
+                "FROM account a WHERE a.entity_id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDate(1, Date.valueOf(date));
-            ps.setString(2, entityType);
-            ps.setLong(3, entityId);
+            ps.setString(2, entityId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     AccountEntity account = mapAccount(rs);
@@ -108,12 +104,12 @@ public class AccountRepository {
         return accounts;
     }
 
-    public boolean hasCashAccount(String entityType, Long entityId) {
-        String sql = "SELECT 1 FROM accounts WHERE entity_type = ? AND entity_id = ? AND account_type = 'CASH'";
+    public boolean hasCashAccount(String entityType, String entityId) {
+        // CORRIGÉ: account au lieu de accounts
+        String sql = "SELECT 1 FROM account WHERE entity_id = ? AND account_type = 'CASH'";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, entityType);
-            ps.setLong(2, entityId);
+            ps.setString(1, entityId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }
@@ -122,35 +118,48 @@ public class AccountRepository {
         }
     }
 
-    public void updateBalance(Long id, Double newBalance) {
-        String sql = "UPDATE accounts SET balance = ? WHERE id = ?";
+    public void updateBalance(String id, Double newBalance) {
+        // CORRIGÉ: account au lieu de accounts
+        String sql = "UPDATE account SET balance = ? WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDouble(1, newBalance);
-            ps.setLong(2, id);
+            ps.setString(2, id);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Erreur updateBalance", e);
         }
     }
 
+    public List<AccountEntity> findAll() {
+        List<AccountEntity> accounts = new ArrayList<>();
+        String sql = "SELECT id, entity_id, account_type, account_name, account_holder_name, " +
+                "bank_name, mobile_money_service, phone_number, balance, currency FROM account ORDER BY id";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                accounts.add(mapAccount(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findAll accounts", e);
+        }
+        return accounts;
+    }
+
     private AccountEntity mapAccount(ResultSet rs) throws SQLException {
         AccountEntity a = new AccountEntity();
-        a.setId(rs.getLong("id"));
-        a.setEntityType(rs.getString("entity_type"));
-        a.setEntityId(rs.getLong("entity_id"));
+        a.setId(rs.getString("id"));
+        a.setEntityId(rs.getString("entity_id"));
         a.setAccountType(rs.getString("account_type"));
         a.setAccountName(rs.getString("account_name"));
         a.setAccountHolderName(rs.getString("account_holder_name"));
         a.setBankName(rs.getString("bank_name"));
-        a.setBankCode(rs.getString("bank_code"));
-        a.setBranchCode(rs.getString("branch_code"));
-        a.setAccountNumber(rs.getString("account_number"));
-        a.setRibKey(rs.getString("rib_key"));
         a.setMobileMoneyService(rs.getString("mobile_money_service"));
         a.setPhoneNumber(rs.getString("phone_number"));
         a.setBalance(rs.getDouble("balance"));
         a.setCurrency(rs.getString("currency"));
         return a;
     }
+
 }

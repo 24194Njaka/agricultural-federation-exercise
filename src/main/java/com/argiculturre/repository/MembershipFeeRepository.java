@@ -18,58 +18,69 @@ public class MembershipFeeRepository {
     }
 
     public MembershipFeeEntity save(MembershipFeeEntity fee) {
-        String sql = "INSERT INTO membership_fees (collectivity_id, name, amount, frequency, start_date, end_date, description) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
+        String sql = "INSERT INTO membership_fee (id, collectivity_id, label, amount, frequency, start_date, end_date, description, created_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, fee.getCollectivityId());
-            ps.setString(2, fee.getName());
-            ps.setDouble(3, fee.getAmount());
-            ps.setString(4, fee.getFrequency());
-            ps.setDate(5, Date.valueOf(fee.getStartDate()));
-            ps.setDate(6, fee.getEndDate() != null ? Date.valueOf(fee.getEndDate()) : null);
-            ps.setString(7, fee.getDescription());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    fee.setId(rs.getLong("id"));
-                }
-            }
+            ps.setString(1, fee.getId());
+            ps.setString(2, fee.getCollectivityId());
+            ps.setString(3, fee.getLabel());
+            ps.setDouble(4, fee.getAmount());
+            ps.setString(5, fee.getFrequency());
+            ps.setDate(6, fee.getStartDate() != null ? Date.valueOf(fee.getStartDate()) : null);
+            ps.setDate(7, fee.getEndDate() != null ? Date.valueOf(fee.getEndDate()) : null);
+            ps.setString(8, fee.getDescription());
+            ps.setTimestamp(9, Timestamp.valueOf(LocalDate.now().atStartOfDay()));
+            ps.executeUpdate();
             return fee;
         } catch (SQLException e) {
-            throw new RuntimeException("Erreur save membership fee", e);
+            throw new RuntimeException("Erreur save membership fee: " + e.getMessage(), e);
         }
     }
 
-    public List<MembershipFeeEntity> findByCollectivityId(Long collectivityId) {
+    public List<MembershipFeeEntity> findByCollectivityId(String collectivityId) {
         List<MembershipFeeEntity> fees = new ArrayList<>();
-        String sql = "SELECT id, collectivity_id, name, amount, frequency, start_date, end_date, description FROM membership_fees WHERE collectivity_id = ? ORDER BY start_date DESC";
+        String sql = "SELECT id, collectivity_id, label, amount, frequency, start_date, end_date, description, created_at " +
+                "FROM membership_fee WHERE collectivity_id = ? ORDER BY start_date DESC";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, collectivityId);
+            ps.setString(1, collectivityId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     fees.add(map(rs));
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Erreur findByCollectivityId", e);
+            throw new RuntimeException("Erreur findByCollectivityId: " + e.getMessage(), e);
         }
         return fees;
     }
 
     private MembershipFeeEntity map(ResultSet rs) throws SQLException {
         MembershipFeeEntity fee = new MembershipFeeEntity();
-        fee.setId(rs.getLong("id"));
-        fee.setCollectivityId(rs.getLong("collectivity_id"));
-        fee.setName(rs.getString("name"));
+        fee.setId(rs.getString("id"));
+        fee.setCollectivityId(rs.getString("collectivity_id"));
+        fee.setLabel(rs.getString("label"));
         fee.setAmount(rs.getDouble("amount"));
         fee.setFrequency(rs.getString("frequency"));
-        fee.setStartDate(rs.getDate("start_date").toLocalDate());
+
+        Date startDate = rs.getDate("start_date");
+        if (startDate != null) {
+            fee.setStartDate(startDate.toLocalDate());
+        }
+
         Date endDate = rs.getDate("end_date");
         if (endDate != null) {
             fee.setEndDate(endDate.toLocalDate());
         }
+
         fee.setDescription(rs.getString("description"));
+
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) {
+            fee.setCreatedAt(createdAt.toLocalDateTime().toLocalDate());
+        }
+
         return fee;
     }
 }

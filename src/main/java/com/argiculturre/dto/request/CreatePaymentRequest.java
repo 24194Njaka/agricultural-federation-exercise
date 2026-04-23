@@ -5,7 +5,7 @@ import java.time.LocalDate;
 
 @Data
 public class CreatePaymentRequest {
-    private Long accountId;
+    private String accountId;
     private Double amount;
     private String paymentMethod;
     private LocalDate paymentDate;
