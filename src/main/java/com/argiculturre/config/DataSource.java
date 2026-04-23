@@ -1,5 +1,6 @@
 package com.argiculturre.config;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.stereotype.Component;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -13,9 +14,19 @@ public class DataSource {
     private final String password;
 
     public DataSource() {
-        this.jdbcUrl = "jdbc:postgresql://localhost:5432/agriculture";
-        this.username = "doudou";
-        this.password = "1622Val++";
+        // Afficher le répertoire de travail pour debug
+        String userDir = System.getProperty("user.dir");
+        System.out.println("Working Directory: " + userDir);
+
+        // Charger Dotenv avec le chemin absolu
+        Dotenv dotenv = Dotenv.configure()
+                .directory(userDir)  // Utiliser le répertoire courant
+                .ignoreIfMissing()  // Ne pas ignorer si manquant
+                .load();
+
+        this.jdbcUrl = dotenv.get("JDBC_URL");
+        this.username = dotenv.get("DB_USER");
+        this.password = dotenv.get("PASSWORD");
 
         System.out.println("=== DATASOURCE CONFIGURATION ===");
         System.out.println("JDBC_URL: " + jdbcUrl);
