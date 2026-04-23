@@ -1,5 +1,6 @@
 package com.argiculturre.service;
 
+import com.argiculturre.dto.request.AssignIdentityRequest;
 import com.argiculturre.dto.request.CreateCollectivityRequest;
 import com.argiculturre.dto.response.CollectivityResponse;
 import com.argiculturre.dto.response.MemberResponse;
@@ -29,7 +30,7 @@ public class CollectivityService {
             throw new RuntimeException("Need at least 10 members");
         }
 
-         List<Long> memberIds = request.getMembers().stream()
+        List<Long> memberIds = request.getMembers().stream()
                 .map(m -> Long.parseLong(String.valueOf(m.getId())))
                 .collect(Collectors.toList());
 
@@ -68,7 +69,45 @@ public class CollectivityService {
             memberRepository.updateRoleAndCollectivity(memberId, role, saved.getId());
         }
 
-         return buildResponse(saved, existingMembers);
+        return buildResponse(saved, existingMembers);
+    }
+
+    // AJOUTER CETTE MÉTHODE
+    public List<CollectivityEntity> getAllCollectivities() {
+        return collectivityRepository.findAll();
+    }
+
+    // AJOUTER CETTE MÉTHODE
+    @Transactional
+    public CollectivityResponse assignIdentity(Long id, AssignIdentityRequest request) {
+        CollectivityEntity collectivity = collectivityRepository.findById(id);
+        if (collectivity == null) {
+            throw new RuntimeException("Collectivity not found");
+        }
+
+        if (collectivityRepository.hasNumberAndName(id)) {
+            throw new RuntimeException("Number and name already assigned, cannot be changed");
+        }
+
+        if (collectivityRepository.existsByNumber(request.getNumber())) {
+            throw new RuntimeException("Number already exists");
+        }
+
+        if (collectivityRepository.existsByName(request.getName())) {
+            throw new RuntimeException("Name already exists");
+        }
+
+        if (request.getNumber() == null || request.getNumber().trim().isEmpty()) {
+            throw new RuntimeException("Number is required");
+        }
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new RuntimeException("Name is required");
+        }
+
+        collectivityRepository.updateNumberAndName(id, request.getNumber(), request.getName());
+
+        CollectivityEntity updated = collectivityRepository.findById(id);
+        return mapToResponse(updated);
     }
 
     private CollectivityResponse buildResponse(CollectivityEntity collectivity, List<MemberEntity> members) {
@@ -135,7 +174,6 @@ public class CollectivityService {
         response.setCreationDate(collectivity.getCreationDate());
         response.setStatus(collectivity.getStatus().name());
         response.setMemberCount(collectivityRepository.countMembers(collectivity.getId()));
-        // Ajouter les membres si nécessaire
         return response;
     }
 }

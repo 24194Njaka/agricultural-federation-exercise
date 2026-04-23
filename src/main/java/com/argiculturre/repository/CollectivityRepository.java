@@ -18,12 +18,14 @@ public class CollectivityRepository {
     }
 
     public CollectivityEntity save(CollectivityEntity c) {
-        String sql = "INSERT INTO collectivities (location, creation_date, status) VALUES (?, ?, ?::type_status) RETURNING id";
+        String sql = "INSERT INTO collectivities (number, name, location, creation_date, status) VALUES (?, ?, ?, ?, ?::type_status) RETURNING id";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, c.getLocation());
-            ps.setDate(2, Date.valueOf(c.getCreationDate()));
-            ps.setString(3, c.getStatus().name());
+            ps.setString(1, c.getNumber());
+            ps.setString(2, c.getName());
+            ps.setString(3, c.getLocation());
+            ps.setDate(4, Date.valueOf(c.getCreationDate()));
+            ps.setString(5, c.getStatus().name());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     c.setId(rs.getLong("id"));

@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -115,4 +116,35 @@ public class MemberService {
         }
         return response;
     }
+    public List<MemberEntity> getAllMembers() {
+        return memberRepository.findAll();
+    }
+
+    public MemberEntity getMemberById(Long id) {
+        MemberEntity member = memberRepository.findById(id);
+        if (member == null) {
+            throw new RuntimeException("Member not found");
+        }
+        return member;
+    }
+
+    public MemberResponse mapToResponse(MemberEntity member) {
+        MemberResponse response = new MemberResponse();
+        response.setId(member.getId());
+        response.setFirstName(member.getFirstName());
+        response.setLastName(member.getLastName());
+        response.setBirthDate(member.getBirthDate());
+        response.setGender(member.getGender().name());
+        response.setAddress(member.getAddress());
+        response.setProfession(member.getProfession());
+        response.setPhone(member.getPhoneNumber());
+        response.setEmail(member.getEmail());
+        response.setMembershipDate(member.getMembershipDate());
+        response.setRole(member.getRole().name());
+        if (member.getCollectivityId() != null) {
+            response.setCollectivityId(member.getCollectivityId());
+        }
+        return response;
+    }
+
 }

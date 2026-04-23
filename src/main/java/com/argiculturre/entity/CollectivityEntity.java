@@ -13,7 +13,7 @@ public class CollectivityEntity {
     private String number;
     private String name;
     private String location;
-    private String specialty;
+    private String specialisation;
     private LocalDate creationDate;
     private TypeStatus status;
     private LocalDate authorizationDate;

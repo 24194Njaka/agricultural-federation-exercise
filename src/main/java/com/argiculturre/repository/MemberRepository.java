@@ -4,6 +4,7 @@ import com.argiculturre.config.DataSource;
 import com.argiculturre.entity.MemberEntity;
 import com.argiculturre.entity.MemberRole;
 import com.argiculturre.entity.TypeGender;
+import jakarta.websocket.Endpoint;
 import org.springframework.stereotype.Repository;
 import java.sql.*;
 import java.time.LocalDate;
@@ -164,5 +165,20 @@ public class MemberRepository {
         } catch (SQLException e) {
             throw new RuntimeException("Erreur updateRoleAndCollectivity", e);
         }
+    }
+
+    public List<MemberEntity> findAll() {
+        List<MemberEntity> members = new ArrayList<>();
+        String sql = "SELECT id, first_name, last_name, birth_date, gender, address, profession, phone, email, membership_date, role, collectivity_id FROM members";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                members.add(map(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findAll members", e);
+        }
+        return members;
     }
 }
