@@ -7,6 +7,7 @@ info:
     - v0.0.1 (2026-04-21) : POST /collectivities and POST /members
     - v0.0.2 (2026-04-22) : PUT /collectivities/{id}/identity for assigning unique number and name
     - v0.0.3 (2026-04-22) : POST /accounts, POST /transactions and GET /transactions/cashflow
+    - v0.0.4 (2026-04-23) : GET /collectivities/{id}, GET /collectivities/{id}/financialAccounts, POST /collectivities/{id}/membershipFees, GET /collectivities/{id}/membershipFees, GET /collectivities/{id}/transactions, POST /members/{id}/payments
     
     # Business Rules
     - A collectivity must have a unique number and unique name assigned by the federation
@@ -17,14 +18,16 @@ info:
     - A collectivity can have only one CASH account
     - Bank account number must have 23 digits (5+5+11+2)
 
-  version: 0.0.3
+  version: 0.0.4
   contact:
     name: Federation Support
+    email: support@federation.mg
   license:
     name: Proprietary
+    identifier: Proprietary
 
 servers:
-  - url: 'https://localhost:8080/api'
+  - url: 'http://localhost:8080'
     description: Development server
   - url: 'https://api.federation.mg/v1'
     description: Production server
@@ -83,7 +86,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  # ==================== IDENTITY ====================
+  '/collectivities/{id}':
+    get:
+      tags:
+        - Collectivities
+      summary: Get collectivity by ID
+      description: |
+        Returns a collectivity with its full details including the list of members.
+        This endpoint is useful for practical evaluation.
+      operationId: getCollectivityById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Collectivity ID
+      responses:
+        '200':
+          description: Collectivity found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collectivity'
+        '404':
+          description: Collectivity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   '/collectivities/{id}/identity':
     put:
       tags:
@@ -135,6 +167,165 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  '/collectivities/{id}/financialAccounts':
+    get:
+      tags:
+        - Accounts
+      summary: Get financial accounts of a collectivity
+      description: |
+        Returns the list of accounts (CASH, BANK, MOBILE_MONEY) for a collectivity
+        with their current balance at a given date.
+      operationId: getFinancialAccounts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Collectivity ID
+        - name: at
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Date to get balances (YYYY-MM-DD)
+      responses:
+        '200':
+          description: List of financial accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FinancialAccountResponse'
+        '404':
+          description: Collectivity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  '/collectivities/{id}/membershipFees':
+    post:
+      tags:
+        - Transactions
+      summary: Create membership fees for a collectivity
+      description: |
+        Creates a list of periodic or one-time membership fees for a collectivity.
+      operationId: createMembershipFees
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Collectivity ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateMembershipFeeRequest'
+      responses:
+        '201':
+          description: Membership fees created successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MembershipFeeResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Collectivity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Transactions
+      summary: Get membership fees for a collectivity
+      description: |
+        Returns the list of existing membership fees for a collectivity.
+      operationId: getMembershipFees
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Collectivity ID
+      responses:
+        '200':
+          description: List of membership fees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MembershipFeeResponse'
+        '404':
+          description: Collectivity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  '/collectivities/{id}/transactions':
+    get:
+      tags:
+        - Transactions
+      summary: Get transactions for a collectivity
+      description: |
+        Returns the list of transactions for a collectivity over a given period.
+      operationId: getCollectivityTransactions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Collectivity ID
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+      responses:
+        '200':
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionResponse'
+        '404':
+          description: Collectivity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   # ==================== MEMBERS ====================
   '/members':
     post:
@@ -175,6 +366,51 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Collectivity or sponsor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  '/members/{id}/payments':
+    post:
+      tags:
+        - Transactions
+      summary: Record payments made by a member
+      description: |
+        Records a list of payments made by a member.
+      operationId: createMemberPayments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Member ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '201':
+          description: Payments recorded successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Member not found
           content:
             application/json:
               schema:
@@ -254,7 +490,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  # ==================== CASH FLOW ====================
   '/transactions/cashflow/{collectivityId}':
     get:
       tags:
@@ -540,6 +775,60 @@ components:
           type: string
           description: Optional description of the transaction
 
+    CreateMembershipFeeRequest:
+      type: object
+      required:
+        - name
+        - amount
+        - frequency
+        - startDate
+      properties:
+        name:
+          type: string
+          description: Name of the membership fee
+        amount:
+          type: number
+          description: Amount in MGA
+        frequency:
+          type: string
+          enum: [MONTHLY, ANNUAL, ONE_TIME]
+          description: Frequency of the fee
+        startDate:
+          type: string
+          format: date
+          description: Start date of the fee
+        endDate:
+          type: string
+          format: date
+          description: End date (for periodic fees)
+        description:
+          type: string
+
+    CreatePaymentRequest:
+      type: object
+      required:
+        - accountId
+        - amount
+        - paymentMethod
+        - paymentDate
+      properties:
+        accountId:
+          type: integer
+          description: Account ID to credit
+        amount:
+          type: number
+          description: Payment amount in MGA
+        paymentMethod:
+          type: string
+          enum: [CASH, BANK_TRANSFER, MOBILE_MONEY]
+          description: Payment method used
+        paymentDate:
+          type: string
+          format: date
+          description: Date of payment
+        description:
+          type: string
+
     # ========== RESPONSE SCHEMAS ==========
 
     Collectivity:
@@ -628,6 +917,31 @@ components:
           type: string
           default: "MGA"
 
+    FinancialAccountResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        accountType:
+          type: string
+          enum: [CASH, BANK, MOBILE_MONEY]
+        accountName:
+          type: string
+        accountHolderName:
+          type: string
+        bankName:
+          type: string
+        mobileMoneyService:
+          type: string
+        phoneNumber:
+          type: string
+        balanceAtDate:
+          type: number
+          description: Balance at the specified date
+        currency:
+          type: string
+          default: "MGA"
+
     TransactionResponse:
       type: object
       properties:
@@ -648,6 +962,26 @@ components:
           type: string
           enum: [CASH, BANK_TRANSFER, MOBILE_MONEY]
         transactionDate:
+          type: string
+          format: date
+        description:
+          type: string
+
+    MembershipFeeResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        amount:
+          type: number
+        frequency:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
           type: string
           format: date
         description:

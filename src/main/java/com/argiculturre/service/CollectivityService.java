@@ -3,10 +3,8 @@ package com.argiculturre.service;
 import com.argiculturre.dto.request.CreateCollectivityRequest;
 import com.argiculturre.dto.response.CollectivityResponse;
 import com.argiculturre.dto.response.MemberResponse;
-import com.argiculturre.entity.CollectivityEntity;
-import com.argiculturre.entity.MemberEntity;
-import com.argiculturre.entity.MemberRole;
-import com.argiculturre.entity.TypeStatus;
+import com.argiculturre.entity.*;
+import com.argiculturre.repository.AccountRepository;
 import com.argiculturre.repository.CollectivityRepository;
 import com.argiculturre.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +21,7 @@ public class CollectivityService {
 
     private final CollectivityRepository collectivityRepository;
     private final MemberRepository memberRepository;
+    private final AccountRepository accountRepository;
 
     @Transactional
     public CollectivityResponse createCollectivity(CreateCollectivityRequest request) {
@@ -63,15 +62,12 @@ public class CollectivityService {
         collectivity.setStatus(TypeStatus.PENDING);
         CollectivityEntity saved = collectivityRepository.save(collectivity);
 
-         for (CreateCollectivityRequest.MemberInfo memberInfo : request.getMembers()) {
+        for (CreateCollectivityRequest.MemberInfo memberInfo : request.getMembers()) {
             Long memberId = Long.parseLong(String.valueOf(memberInfo.getId()));
-            MemberEntity member = memberRepository.findById(memberId);
-            if (member != null) {
-                member.setCollectivityId(saved.getId());
-                member.setRole(MemberRole.valueOf(memberInfo.getRole()));
-                memberRepository.save(member);
-            }
+            MemberRole role = MemberRole.valueOf(memberInfo.getRole());
+            memberRepository.updateRoleAndCollectivity(memberId, role, saved.getId());
         }
+
          return buildResponse(saved, existingMembers);
     }
 
@@ -96,6 +92,50 @@ public class CollectivityService {
         }
         response.setMembers(memberResponses);
 
+        return response;
+    }
+
+    public CollectivityEntity getCollectivityById(Long id) {
+        CollectivityEntity collectivity = collectivityRepository.findById(id);
+        if (collectivity == null) {
+            throw new RuntimeException("Collectivity not found");
+        }
+        return collectivity;
+    }
+
+    public List<FinancialAccountResponse> getFinancialAccounts(Long collectivityId, LocalDate atDate) {
+        CollectivityEntity collectivity = collectivityRepository.findById(collectivityId);
+        if (collectivity == null) {
+            throw new RuntimeException("Collectivity not found");
+        }
+        List<AccountEntity> accounts = accountRepository.findByEntityWithBalanceAtDate("COLLECTIVITY", collectivityId, atDate);
+        return accounts.stream().map(this::mapToFinancialAccountResponse).collect(Collectors.toList());
+    }
+
+    private FinancialAccountResponse mapToFinancialAccountResponse(AccountEntity account) {
+        FinancialAccountResponse response = new FinancialAccountResponse();
+        response.setId(account.getId());
+        response.setAccountType(account.getAccountType());
+        response.setAccountHolderName(account.getAccountName());
+        response.setAccountHolderName(account.getAccountHolderName());
+        response.setBankName(account.getBankName());
+        response.setMobileMoneyService(account.getMobileMoneyService());
+        response.setPhoneNumber(account.getPhoneNumber());
+        response.setBalanceAtDate(account.getBalance());
+        response.setCurrency(account.getCurrency());
+        return response;
+    }
+
+    public CollectivityResponse mapToResponse(CollectivityEntity collectivity) {
+        CollectivityResponse response = new CollectivityResponse();
+        response.setId(collectivity.getId());
+        response.setNumber(collectivity.getNumber());
+        response.setName(collectivity.getName());
+        response.setLocation(collectivity.getLocation());
+        response.setCreationDate(collectivity.getCreationDate());
+        response.setStatus(collectivity.getStatus().name());
+        response.setMemberCount(collectivityRepository.countMembers(collectivity.getId()));
+        // Ajouter les membres si nécessaire
         return response;
     }
 }

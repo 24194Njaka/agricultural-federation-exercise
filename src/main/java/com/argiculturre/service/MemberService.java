@@ -68,8 +68,7 @@ public class MemberService {
             throw new RuntimeException("Sponsors from target collectivity must be >= others");
         }
 
-        // 5. Créer le membre
-        MemberEntity member = new MemberEntity();
+         MemberEntity member = new MemberEntity();
         member.setFirstName(request.getFirstName());
         member.setLastName(request.getLastName());
         member.setBirthDate(request.getBirthDate());

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -67,7 +68,7 @@ public class TransactionService {
         List<TransactionResponse> allTransactions = new ArrayList<>();
 
         for (AccountEntity account : accounts) {
-            List<TransactionEntity> transactions = transactionRepository.findByAccountId(account.getId(), startDate, endDate);
+            List<TransactionEntity> transactions = transactionRepository.findByCollectivityId(account.getId(), startDate, endDate);
 
             for (TransactionEntity t : transactions) {
                 MemberEntity member = memberRepository.findById(t.getMemberId());
@@ -105,4 +106,23 @@ public class TransactionService {
         response.setDescription(transaction.getDescription());
         return response;
     }
+
+    public List<TransactionResponse> getCollectivityTransactions(Long collectivityId, LocalDate from, LocalDate to) {
+        List<TransactionEntity> transactions = transactionRepository.findByCollectivityId(collectivityId, from, to);
+        return transactions.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    private TransactionResponse mapToResponse(TransactionEntity transaction) {
+        TransactionResponse response = new TransactionResponse();
+        response.setId(transaction.getId());
+        response.setAccountId(transaction.getAccountId());
+        response.setMemberId(transaction.getMemberId());
+        response.setTransactionType(transaction.getTransactionType());
+        response.setAmount(transaction.getAmount());
+        response.setPaymentMethod(transaction.getPaymentMethod());
+        response.setTransactionDate(transaction.getTransactionDate());
+        response.setDescription(transaction.getDescription());
+        return response;
+    }
+
 }

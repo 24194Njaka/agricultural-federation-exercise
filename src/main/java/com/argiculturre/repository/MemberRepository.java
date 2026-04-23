@@ -148,4 +148,21 @@ public class MemberRepository {
         }
         return m;
     }
+
+    public void updateRoleAndCollectivity(Long memberId, MemberRole role, Long collectivityId) {
+        String sql = "UPDATE members SET role = ?::member_role, collectivity_id = ? WHERE id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, role.name());
+            if (collectivityId != null) {
+                ps.setLong(2, collectivityId);
+            } else {
+                ps.setNull(2, Types.BIGINT);
+            }
+            ps.setLong(3, memberId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur updateRoleAndCollectivity", e);
+        }
+    }
 }

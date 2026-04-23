@@ -5,9 +5,12 @@ import com.argiculturre.entity.CollectivityEntity;
 import com.argiculturre.entity.TypeStatus;
 import org.springframework.stereotype.Repository;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Repository
 public class CollectivityRepository {
+
     private final DataSource dataSource;
 
     public CollectivityRepository(DataSource dataSource) {
@@ -115,6 +118,21 @@ public class CollectivityRepository {
             throw new RuntimeException("Erreur countMembers", e);
         }
         return 0;
+    }
+
+    public List<CollectivityEntity> findAll() {
+        List<CollectivityEntity> collectivities = new ArrayList<>();
+        String sql = "SELECT id, number, name, location, creation_date, status FROM collectivities";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                collectivities.add(map(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findAll", e);
+        }
+        return collectivities;
     }
 
     private CollectivityEntity map(ResultSet rs) throws SQLException {

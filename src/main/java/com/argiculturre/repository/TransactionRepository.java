@@ -23,7 +23,6 @@ public class TransactionRepository {
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setLong(1, transaction.getAccountId());
             ps.setLong(2, transaction.getMemberId());
             ps.setString(3, transaction.getTransactionType());
@@ -31,7 +30,6 @@ public class TransactionRepository {
             ps.setString(5, transaction.getPaymentMethod());
             ps.setDate(6, Date.valueOf(transaction.getTransactionDate()));
             ps.setString(7, transaction.getDescription());
-
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     transaction.setId(rs.getLong("id"));
@@ -43,13 +41,17 @@ public class TransactionRepository {
         }
     }
 
-    public List<TransactionEntity> findByAccountId(Long accountId, LocalDate from, LocalDate to) {
+    public List<TransactionEntity> findByCollectivityId(Long collectivityId, LocalDate from, LocalDate to) {
         List<TransactionEntity> transactions = new ArrayList<>();
-        String sql = "SELECT * FROM transactions WHERE account_id = ? AND transaction_date BETWEEN ? AND ? ORDER BY transaction_date DESC";
+        String sql = "SELECT t.* FROM transactions t " +
+                "JOIN accounts a ON t.account_id = a.id " +
+                "WHERE a.entity_type = 'COLLECTIVITY' AND a.entity_id = ? " +
+                "AND t.transaction_date BETWEEN ? AND ? " +
+                "ORDER BY t.transaction_date DESC";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, accountId);
+            ps.setLong(1, collectivityId);
             ps.setDate(2, Date.valueOf(from));
             ps.setDate(3, Date.valueOf(to));
             try (ResultSet rs = ps.executeQuery()) {
@@ -58,49 +60,9 @@ public class TransactionRepository {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Erreur findByAccountId", e);
+            throw new RuntimeException("Erreur findByCollectivityId", e);
         }
         return transactions;
-    }
-
-    public List<TransactionEntity> findByMemberId(Long memberId, LocalDate from, LocalDate to) {
-        List<TransactionEntity> transactions = new ArrayList<>();
-        String sql = "SELECT * FROM transactions WHERE member_id = ? AND transaction_date BETWEEN ? AND ? ORDER BY transaction_date DESC";
-
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, memberId);
-            ps.setDate(2, Date.valueOf(from));
-            ps.setDate(3, Date.valueOf(to));
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    transactions.add(map(rs));
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur findByMemberId", e);
-        }
-        return transactions;
-    }
-
-    public Double getTotalByAccountAndType(Long accountId, String transactionType, LocalDate from, LocalDate to) {
-        String sql = "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE account_id = ? AND transaction_type = ? AND transaction_date BETWEEN ? AND ?";
-
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, accountId);
-            ps.setString(2, transactionType);
-            ps.setDate(3, Date.valueOf(from));
-            ps.setDate(4, Date.valueOf(to));
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getDouble(1);
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur getTotalByAccountAndType", e);
-        }
-        return 0.0;
     }
 
     private TransactionEntity map(ResultSet rs) throws SQLException {

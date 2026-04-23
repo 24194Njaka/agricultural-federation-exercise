@@ -2,8 +2,10 @@ package com.argiculturre.repository;
 
 import com.argiculturre.config.DataSource;
 import com.argiculturre.entity.AccountEntity;
+import com.argiculturre.entity.TransactionEntity;
 import org.springframework.stereotype.Repository;
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,7 +59,7 @@ public class AccountRepository {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return map(rs);
+                    return mapAccount(rs);  // ← Renommé
                 }
             }
         } catch (SQLException e) {
@@ -75,11 +77,36 @@ public class AccountRepository {
             ps.setLong(2, entityId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    accounts.add(map(rs));
+                    accounts.add(mapAccount(rs));
                 }
             }
         } catch (SQLException e) {
             throw new RuntimeException("Erreur findByEntity", e);
+        }
+        return accounts;
+    }
+
+    public List<AccountEntity> findByEntityWithBalanceAtDate(String entityType, Long entityId, LocalDate date) {
+        List<AccountEntity> accounts = new ArrayList<>();
+        String sql = "SELECT a.*, " +
+                "COALESCE((SELECT SUM(CASE WHEN t.transaction_type = 'CONTRIBUTION' THEN t.amount ELSE -t.amount END) " +
+                "FROM transactions t WHERE t.account_id = a.id AND t.transaction_date <= ?), 0) as balance_at_date " +
+                "FROM accounts a WHERE a.entity_type = ? AND a.entity_id = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, Date.valueOf(date));
+            ps.setString(2, entityType);
+            ps.setLong(3, entityId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    AccountEntity account = mapAccount(rs);
+                    account.setBalance(rs.getDouble("balance_at_date"));
+                    accounts.add(account);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findByEntityWithBalanceAtDate", e);
         }
         return accounts;
     }
@@ -110,7 +137,7 @@ public class AccountRepository {
         }
     }
 
-    private AccountEntity map(ResultSet rs) throws SQLException {
+    private AccountEntity mapAccount(ResultSet rs) throws SQLException {
         AccountEntity a = new AccountEntity();
         a.setId(rs.getLong("id"));
         a.setEntityType(rs.getString("entity_type"));
@@ -128,5 +155,18 @@ public class AccountRepository {
         a.setBalance(rs.getDouble("balance"));
         a.setCurrency(rs.getString("currency"));
         return a;
+    }
+
+    private TransactionEntity mapTransaction(ResultSet rs) throws SQLException {
+        TransactionEntity t = new TransactionEntity();
+        t.setId(rs.getLong("id"));
+        t.setAccountId(rs.getLong("account_id"));
+        t.setMemberId(rs.getLong("member_id"));
+        t.setTransactionType(rs.getString("transaction_type"));
+        t.setAmount(rs.getDouble("amount"));
+        t.setPaymentMethod(rs.getString("payment_method"));
+        t.setTransactionDate(rs.getDate("transaction_date").toLocalDate());
+        t.setDescription(rs.getString("description"));
+        return t;
     }
 }
