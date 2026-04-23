@@ -20,7 +20,6 @@ public class MembershipFeeRepository {
     public MembershipFeeEntity save(MembershipFeeEntity fee) {
         String sql = "INSERT INTO membership_fees (collectivity_id, name, amount, frequency, start_date, end_date, description) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
-
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, fee.getCollectivityId());
@@ -30,7 +29,6 @@ public class MembershipFeeRepository {
             ps.setDate(5, Date.valueOf(fee.getStartDate()));
             ps.setDate(6, fee.getEndDate() != null ? Date.valueOf(fee.getEndDate()) : null);
             ps.setString(7, fee.getDescription());
-
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     fee.setId(rs.getLong("id"));
@@ -44,8 +42,7 @@ public class MembershipFeeRepository {
 
     public List<MembershipFeeEntity> findByCollectivityId(Long collectivityId) {
         List<MembershipFeeEntity> fees = new ArrayList<>();
-        String sql = "SELECT * FROM membership_fees WHERE collectivity_id = ? ORDER BY start_date DESC";
-
+        String sql = "SELECT id, collectivity_id, name, amount, frequency, start_date, end_date, description FROM membership_fees WHERE collectivity_id = ? ORDER BY start_date DESC";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, collectivityId);

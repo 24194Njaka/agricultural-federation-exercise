@@ -20,7 +20,6 @@ public class TransactionRepository {
     public TransactionEntity save(TransactionEntity transaction) {
         String sql = "INSERT INTO transactions (account_id, member_id, transaction_type, amount, payment_method, transaction_date, description) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
-
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, transaction.getAccountId());
@@ -43,7 +42,7 @@ public class TransactionRepository {
 
     public List<TransactionEntity> findByCollectivityId(Long collectivityId, LocalDate from, LocalDate to) {
         List<TransactionEntity> transactions = new ArrayList<>();
-        String sql = "SELECT t.* FROM transactions t " +
+        String sql = "SELECT t.id, t.account_id, t.member_id, t.transaction_type, t.amount, t.payment_method, t.transaction_date, t.description FROM transactions t " +
                 "JOIN accounts a ON t.account_id = a.id " +
                 "WHERE a.entity_type = 'COLLECTIVITY' AND a.entity_id = ? " +
                 "AND t.transaction_date BETWEEN ? AND ? " +

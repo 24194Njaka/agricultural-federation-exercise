@@ -22,10 +22,8 @@ public class AccountRepository {
         String sql = "INSERT INTO accounts (entity_type, entity_id, account_type, account_name, account_holder_name, " +
                 "bank_name, bank_code, branch_code, account_number, rib_key, mobile_money_service, phone_number, balance, currency) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
-
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setString(1, account.getEntityType());
             ps.setLong(2, account.getEntityId());
             ps.setString(3, account.getAccountType());
@@ -40,7 +38,6 @@ public class AccountRepository {
             ps.setString(12, account.getPhoneNumber());
             ps.setDouble(13, account.getBalance() != null ? account.getBalance() : 0.0);
             ps.setString(14, account.getCurrency() != null ? account.getCurrency() : "MGA");
-
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     account.setId(rs.getLong("id"));
@@ -53,13 +50,13 @@ public class AccountRepository {
     }
 
     public AccountEntity findById(Long id) {
-        String sql = "SELECT * FROM accounts WHERE id = ?";
+        String sql = "SELECT id, entity_type, entity_id, account_type, account_name, account_holder_name, bank_name, bank_code, branch_code, account_number, rib_key, mobile_money_service, phone_number, balance, currency FROM accounts WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return mapAccount(rs);  // ← Renommé
+                    return mapAccount(rs);
                 }
             }
         } catch (SQLException e) {
@@ -70,7 +67,7 @@ public class AccountRepository {
 
     public List<AccountEntity> findByEntity(String entityType, Long entityId) {
         List<AccountEntity> accounts = new ArrayList<>();
-        String sql = "SELECT * FROM accounts WHERE entity_type = ? AND entity_id = ?";
+        String sql = "SELECT id, entity_type, entity_id, account_type, account_name, account_holder_name, bank_name, bank_code, branch_code, account_number, rib_key, mobile_money_service, phone_number, balance, currency FROM accounts WHERE entity_type = ? AND entity_id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, entityType);
@@ -88,7 +85,7 @@ public class AccountRepository {
 
     public List<AccountEntity> findByEntityWithBalanceAtDate(String entityType, Long entityId, LocalDate date) {
         List<AccountEntity> accounts = new ArrayList<>();
-        String sql = "SELECT a.*, " +
+        String sql = "SELECT a.id, a.entity_type, a.entity_id, a.account_type, a.account_name, a.account_holder_name, a.bank_name, a.bank_code, a.branch_code, a.account_number, a.rib_key, a.mobile_money_service, a.phone_number, a.balance, a.currency, " +
                 "COALESCE((SELECT SUM(CASE WHEN t.transaction_type = 'CONTRIBUTION' THEN t.amount ELSE -t.amount END) " +
                 "FROM transactions t WHERE t.account_id = a.id AND t.transaction_date <= ?), 0) as balance_at_date " +
                 "FROM accounts a WHERE a.entity_type = ? AND a.entity_id = ?";
@@ -155,18 +152,5 @@ public class AccountRepository {
         a.setBalance(rs.getDouble("balance"));
         a.setCurrency(rs.getString("currency"));
         return a;
-    }
-
-    private TransactionEntity mapTransaction(ResultSet rs) throws SQLException {
-        TransactionEntity t = new TransactionEntity();
-        t.setId(rs.getLong("id"));
-        t.setAccountId(rs.getLong("account_id"));
-        t.setMemberId(rs.getLong("member_id"));
-        t.setTransactionType(rs.getString("transaction_type"));
-        t.setAmount(rs.getDouble("amount"));
-        t.setPaymentMethod(rs.getString("payment_method"));
-        t.setTransactionDate(rs.getDate("transaction_date").toLocalDate());
-        t.setDescription(rs.getString("description"));
-        return t;
     }
 }

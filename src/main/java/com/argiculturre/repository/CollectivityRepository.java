@@ -107,7 +107,7 @@ public class CollectivityRepository {
     }
 
     public int countMembers(Long collectivityId) {
-        String sql = "SELECT COUNT(*) FROM members WHERE collectivity_id = ?";
+        String sql = "SELECT COUNT(id) FROM members WHERE collectivity_id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, collectivityId);

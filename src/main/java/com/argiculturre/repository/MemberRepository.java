@@ -48,7 +48,7 @@ public class MemberRepository {
     }
 
     public MemberEntity findById(Long id) {
-        String sql = "SELECT * FROM members WHERE id = ?";
+        String sql = "SELECT id, first_name, last_name, birth_date, gender, address, profession, phone, email, membership_date, role, collectivity_id FROM members WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
@@ -68,7 +68,7 @@ public class MemberRepository {
         if (ids == null || ids.isEmpty()) return members;
 
         String placeholders = String.join(",", ids.stream().map(id -> "?").toArray(String[]::new));
-        String sql = "SELECT * FROM members WHERE id IN (" + placeholders + ")";
+        String sql = "SELECT id, first_name, last_name, birth_date, gender, address, profession, phone, email, membership_date, role, collectivity_id FROM members WHERE id IN (" + placeholders + ")";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -101,7 +101,7 @@ public class MemberRepository {
 
     public List<MemberEntity> findConfirmedWithSeniority(LocalDate minDate) {
         List<MemberEntity> members = new ArrayList<>();
-        String sql = "SELECT * FROM members WHERE role = ?::member_role AND membership_date <= ?";
+        String sql = "SELECT id, first_name, last_name, birth_date, gender, address, profession, phone, email, membership_date, role, collectivity_id FROM members WHERE role = ?::member_role AND membership_date <= ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, MemberRole.CONFIRMED_MEMBER.name());
