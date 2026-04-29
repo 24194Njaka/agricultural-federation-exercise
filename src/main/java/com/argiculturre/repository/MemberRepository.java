@@ -135,7 +135,7 @@ public class MemberRepository {
         m.setGender(TypeGender.valueOf(rs.getString("gender")));
         m.setAddress(rs.getString("address"));
         m.setProfession(rs.getString("profession"));
-        m.setPhoneNumber(rs.getString("phone"));
+        m.setPhoneNumber(rs.getString("phone_number"));
         m.setEmail(rs.getString("email"));
         m.setMembershipDate(rs.getDate("membership_date").toLocalDate());
         m.setRole(MemberRole.valueOf(rs.getString("role")));
