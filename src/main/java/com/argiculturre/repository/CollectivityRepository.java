@@ -36,7 +36,6 @@ public class CollectivityRepository {
     }
 
     public CollectivityEntity findById(String id) {
-        // CORRIGÉ: espace après location,
         String sql = "SELECT id, number, name, location, specialisation, creation_date, status FROM collectivity WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {

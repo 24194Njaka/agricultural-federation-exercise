@@ -11,7 +11,6 @@ import com.argiculturre.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,8 +51,7 @@ public class PaymentService {
 
         TransactionEntity saved = transactionRepository.save(transaction);
 
-        // Mettre à jour le solde du compte
-        double newBalance = account.getBalance() - request.getAmount();
+         double newBalance = account.getBalance() - request.getAmount();
         accountRepository.updateBalance(account.getId(), newBalance);
 
         return mapToResponse(saved);

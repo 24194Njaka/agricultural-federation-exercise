@@ -18,20 +18,17 @@ public class AccountService {
 
     @Transactional
     public AccountResponse createAccount(CreateAccountRequest request) {
-        // Vérifier qu'une collectivité ne peut avoir qu'une seule caisse
-        if ("CASH".equals(request.getAccountType())) {
+         if ("CASH".equals(request.getAccountType())) {
             if (accountRepository.hasCashAccount(request.getEntityType(), request.getEntityId())) {
                 throw new RuntimeException("This entity already has a CASH account");
             }
         }
 
-        // Valider le format du numéro de compte bancaire
-        if ("BANK".equals(request.getAccountType())) {
+         if ("BANK".equals(request.getAccountType())) {
             validateBankAccount(request);
         }
 
-        // Valider le compte mobile money
-        if ("MOBILE_MONEY".equals(request.getAccountType())) {
+         if ("MOBILE_MONEY".equals(request.getAccountType())) {
             validateMobileMoney(request);
         }
 
@@ -56,16 +53,14 @@ public class AccountService {
         return mapToResponse(saved);
     }
 
-    // CORRIGÉ: retourne List<AccountResponse>
-    public List<AccountResponse> getAllAccounts() {
+     public List<AccountResponse> getAllAccounts() {
         List<AccountEntity> accounts = accountRepository.findAll();
         return accounts.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    // CORRIGÉ: retourne AccountResponse
-    public AccountResponse getAccountById(String id) {
+     public AccountResponse getAccountById(String id) {
         AccountEntity account = accountRepository.findById(id);
         if (account == null) {
             throw new RuntimeException("Account not found with id: " + id);

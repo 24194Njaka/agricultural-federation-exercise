@@ -27,19 +27,16 @@ public class TransactionService {
 
     @Transactional
     public TransactionResponse createTransaction(CreateTransactionRequest request) {
-        // Vérifier que le compte existe
-        AccountEntity account = accountRepository.findById(request.getAccountId());
+         AccountEntity account = accountRepository.findById(request.getAccountId());
         if (account == null) {
             throw new RuntimeException("Account not found");
         }
 
-        // Vérifier que le membre existe
-        MemberEntity member = memberRepository.findById(request.getMemberId());
+         MemberEntity member = memberRepository.findById(request.getMemberId());
         if (member == null) {
             throw new RuntimeException("Member not found");
         }
 
-        // Créer la transaction
         TransactionEntity transaction = new TransactionEntity();
         transaction.setAccountId(request.getAccountId());
         transaction.setMemberId(request.getMemberId());
@@ -51,7 +48,6 @@ public class TransactionService {
 
         TransactionEntity saved = transactionRepository.save(transaction);
 
-        // Mettre à jour le solde du compte
         double newBalance = account.getBalance() +
                 ("CONTRIBUTION".equals(request.getTransactionType()) ? request.getAmount() : -request.getAmount());
         accountRepository.updateBalance(account.getId(), newBalance);
@@ -60,7 +56,6 @@ public class TransactionService {
     }
 
     public CashFlowResponse getCashFlow(String collectivityId, LocalDate startDate, LocalDate endDate) {
-        // Récupérer tous les comptes de la collectivité
         List<AccountEntity> accounts = accountRepository.findByEntity("COLLECTIVITY", collectivityId);
 
         double totalIncome = 0;

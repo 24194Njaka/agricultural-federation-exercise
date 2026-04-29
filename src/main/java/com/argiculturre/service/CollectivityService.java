@@ -76,8 +76,7 @@ public class CollectivityService {
         return collectivityRepository.findAll();
     }
 
-    // AJOUTER CETTE MÉTHODE
-    @Transactional
+     @Transactional
     public CollectivityResponse assignIdentity(String id, AssignIdentityRequest request) {
         CollectivityEntity collectivity = collectivityRepository.findById(id);
         if (collectivity == null) {
