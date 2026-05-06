@@ -1,75 +1,126 @@
 package com.argiculturre.service;
 
-import com.argiculturre.dto.request.CreateMembershipFeeRequest;
-import com.argiculturre.dto.response.MembershipFeeResponse;
-import com.argiculturre.entity.CollectivityEntity;
+import com.argiculturre.config.DataSource;
+import com.argiculturre.dto.CreateMembershipFee;
+import com.argiculturre.dto.MembershipFee;
+
 import com.argiculturre.entity.MembershipFeeEntity;
+import com.argiculturre.exception.BusinessRuleException;
+import com.argiculturre.exception.ResourceNotFoundException;
 import com.argiculturre.repository.CollectivityRepository;
 import com.argiculturre.repository.MembershipFeeRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDate;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class MembershipFeeService {
 
-    private final MembershipFeeRepository feeRepository;
+    private final DataSource dataSource;
     private final CollectivityRepository collectivityRepository;
+    private final MembershipFeeRepository membershipFeeRepository;
 
-    @Transactional
-    public List<MembershipFeeResponse> createMembershipFees(String collectivityId, List<CreateMembershipFeeRequest> requests) {
-        CollectivityEntity collectivity = collectivityRepository.findById(collectivityId);
-        if (collectivity == null) {
-            throw new RuntimeException("Collectivity not found");
+    private static final List<String> VALID_FREQUENCIES = List.of("WEEKLY", "MONTHLY", "ANNUALLY", "PUNCTUALLY");
+
+    public MembershipFeeService(DataSource dataSource,
+                                CollectivityRepository collectivityRepository,
+                                MembershipFeeRepository membershipFeeRepository) {
+        this.dataSource = dataSource;
+        this.collectivityRepository = collectivityRepository;
+        this.membershipFeeRepository = membershipFeeRepository;
+    }
+
+    public List<MembershipFee> getMembershipFees(String collectivityIdStr) {
+        try (Connection conn = dataSource.getConnection()) {
+            String collectivityId = collectivityIdStr;
+
+            if (collectivityRepository.findById(conn, collectivityId).isEmpty()) {
+                throw new ResourceNotFoundException("Collectivity not found with id: " + collectivityIdStr);
+            }
+
+            List<MembershipFeeEntity> entities = membershipFeeRepository.findByCollectivityId(conn, collectivityId);
+            return entities.stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error while fetching membership fees", e);
+        }
+    }
+
+    public List<MembershipFee> createMembershipFees(String collectivityIdStr, List<CreateMembershipFee> createFees) {
+        if (createFees == null || createFees.isEmpty()) {
+            throw new BusinessRuleException("At least one membership fee must be provided");
         }
 
-        return requests.stream()
-                .map(req -> createFee(collectivityId, req))
-                .collect(Collectors.toList());
-    }
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                String collectivityId = collectivityIdStr;
 
-    private MembershipFeeResponse createFee(String collectivityId, CreateMembershipFeeRequest request) {
-        MembershipFeeEntity fee = new MembershipFeeEntity();
-        fee.setId(generateId());
-        fee.setCollectivityId(collectivityId);
-        fee.setLabel(request.getLabel());
-        fee.setAmount(request.getAmount());
-        fee.setFrequency(request.getFrequency());
-        fee.setStartDate(request.getStartDate());
-        fee.setEndDate(request.getEndDate());
-        fee.setDescription(request.getDescription());
+                if (collectivityRepository.findById(conn, collectivityId).isEmpty()) {
+                    throw new ResourceNotFoundException("Collectivity not found with id: " + collectivityIdStr);
+                }
 
-        MembershipFeeEntity saved = feeRepository.save(fee);
-        return mapToResponse(saved);
-    }
+                List<MembershipFee> createdFees = new ArrayList<>();
 
-    public List<MembershipFeeResponse> getMembershipFees(String collectivityId) {
-        CollectivityEntity collectivity = collectivityRepository.findById(collectivityId);
-        if (collectivity == null) {
-            throw new RuntimeException("Collectivity not found");
+                for (CreateMembershipFee createFee : createFees) {
+                    if (createFee.getAmount() == null || createFee.getAmount().compareTo(java.math.BigDecimal.ZERO) < 0) {
+                        throw new BusinessRuleException("Amount cannot be negative");
+                    }
+
+                    if (createFee.getFrequency() == null || !VALID_FREQUENCIES.contains(createFee.getFrequency())) {
+                        throw new BusinessRuleException("Invalid frequency. Allowed values: WEEKLY, MONTHLY, ANNUALLY, PUNCTUALLY");
+                    }
+
+                    if (createFee.getEligibleFrom() == null) {
+                        throw new BusinessRuleException("Eligible from date is required");
+                    }
+
+                    String feeId = generateMembershipFeeId();
+
+                    MembershipFeeEntity entity = new MembershipFeeEntity();
+                    entity.setId(feeId);
+                    entity.setCollectivityId(collectivityId);
+                    entity.setEligibleFrom(createFee.getEligibleFrom());
+                    entity.setFrequency(createFee.getFrequency());
+                    entity.setAmount(createFee.getAmount());
+                    entity.setLabel(createFee.getLabel());
+                    entity.setStatus("ACTIVE");
+
+                    membershipFeeRepository.insert(conn, entity);
+
+                    createdFees.add(toDto(entity));
+                }
+
+                conn.commit();
+                return createdFees;
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw new RuntimeException("Database error while creating membership fees", e);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Database connection error", e);
         }
-
-        List<MembershipFeeEntity> fees = feeRepository.findByCollectivityId(collectivityId);
-        return fees.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    private String generateId() {
-        return "FEE-" + System.currentTimeMillis();
+    private String generateMembershipFeeId() {
+        return "cot-" + UUID.randomUUID().toString().substring(0, 8);
     }
 
-    private MembershipFeeResponse mapToResponse(MembershipFeeEntity fee) {
-        MembershipFeeResponse response = new MembershipFeeResponse();
-        response.setId(fee.getId());
-        response.setLabel(fee.getLabel());
-        response.setAmount(fee.getAmount());
-        response.setFrequency(fee.getFrequency());
-        response.setStartDate(fee.getStartDate());
-        response.setEndDate(fee.getEndDate());
-        response.setDescription(fee.getDescription());
-        return response;
+    private MembershipFee toDto(MembershipFeeEntity entity) {
+        MembershipFee dto = new MembershipFee();
+        dto.setId(entity.getId());
+        dto.setEligibleFrom(entity.getEligibleFrom());
+        dto.setFrequency(entity.getFrequency());
+        dto.setAmount(entity.getAmount());
+        dto.setLabel(entity.getLabel());
+        dto.setStatus(entity.getStatus());
+        return dto;
     }
 }

@@ -1,51 +1,39 @@
 package com.argiculturre.controller;
 
-import com.argiculturre.dto.request.AssignIdentityRequest;
-import com.argiculturre.dto.request.CreateCollectivityRequest;
-import com.argiculturre.dto.response.CollectivityResponse;
-import com.argiculturre.entity.CollectivityEntity;
+import com.argiculturre.dto.Collectivity;
+import com.argiculturre.dto.CollectivityInformation;
+import com.argiculturre.dto.CreateCollectivity;
 import com.argiculturre.service.CollectivityService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/collectivities")
-@RequiredArgsConstructor
 public class CollectivityController {
 
     private final CollectivityService collectivityService;
 
-    @PostMapping
-    public ResponseEntity<CollectivityResponse> createCollectivity(@RequestBody CreateCollectivityRequest request) {
-        CollectivityResponse response = collectivityService.createCollectivity(request);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    public CollectivityController(CollectivityService collectivityService) {
+        this.collectivityService = collectivityService;
     }
 
-    @GetMapping
-    public ResponseEntity<List<CollectivityResponse>> getAllCollectivities() {
-        List<CollectivityEntity> collectivities = collectivityService.getAllCollectivities();
-        List<CollectivityResponse> responses = collectivities.stream()
-                .map(collectivityService::mapToResponse)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(responses);
+    @PostMapping("/collectivities")
+    public ResponseEntity<List<Collectivity>> createCollectivities(@RequestBody List<CreateCollectivity> createList) {
+        List<Collectivity> result = collectivityService.createCollectivities(createList);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<CollectivityResponse> getCollectivityById(@PathVariable String id) {
-        CollectivityEntity collectivity = collectivityService.getCollectivityById(id);
-        CollectivityResponse response = collectivityService.mapToResponse(collectivity);
-        return ResponseEntity.ok(response);
-    }
-
-    @PutMapping("/{id}/informations")
-    public ResponseEntity<CollectivityResponse> assignIdentity(
+    @PutMapping("/collectivities/{id}/informations")
+    public ResponseEntity<Collectivity> updateCollectivityInformation(
             @PathVariable String id,
-            @RequestBody AssignIdentityRequest request) {
-        CollectivityResponse response = collectivityService.assignIdentity(id, request);
-        return ResponseEntity.ok(response);
+            @RequestBody CollectivityInformation info) {
+        Collectivity updated = collectivityService.updateCollectivityInformation(id, info);
+        return ResponseEntity.ok(updated);
+    }
+    @GetMapping("/collectivities/{id}")
+    public ResponseEntity<Collectivity> getCollectivityById(@PathVariable String id) {
+        Collectivity collectivity = collectivityService.getCollectivityById(id);
+        return ResponseEntity.ok(collectivity);
     }
 }
