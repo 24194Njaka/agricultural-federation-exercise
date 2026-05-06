@@ -11,89 +11,52 @@ import java.util.List;
 @Repository
 public class TransactionRepository {
 
-    private final DataSource dataSource;
-
-    public TransactionRepository(DataSource dataSource) {
-        this.dataSource = dataSource;
-    }
-
-    public TransactionEntity save(TransactionEntity transaction) {
-        String sql = "INSERT INTO transaction (account_id, member_id, transaction_type, amount, payment_method, transaction_date, label) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, transaction.getAccountId());
-            ps.setString(2, transaction.getMemberId());
-            ps.setString(3, transaction.getTransactionType());
-            ps.setDouble(4, transaction.getAmount());
-            ps.setString(5, transaction.getPaymentMethod());
-            ps.setDate(6, Date.valueOf(transaction.getTransactionDate()));
-            ps.setString(7, transaction.getLabel());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    transaction.setId(rs.getString("id"));
-                }
-            }
-            return transaction;
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur save transaction", e);
-        }
-    }
-
-    public List<TransactionEntity> findByCollectivityId(String collectivityId, LocalDate from, LocalDate to) {
+    public List<TransactionEntity> findByCollectivityIdAndDateRange(Connection conn, String collectivityId, LocalDate from, LocalDate to) throws SQLException {
+        String sql = "SELECT id, member_id, collectivity_id, amount, payment_mode, account_credited_id, membership_fee_id, creation_date " +
+                "FROM transaction WHERE collectivity_id = ? AND creation_date BETWEEN ? AND ? " +
+                "ORDER BY creation_date DESC";
         List<TransactionEntity> transactions = new ArrayList<>();
-        String sql = "SELECT t.id, t.account_id, t.member_id, t.transaction_type, t.amount, t.payment_method, t.transaction_date, t.label " +
-                "FROM transaction t " +
-                "JOIN account a ON t.account_id = a.id " +
-                "WHERE a.entity_id = ? " +
-                "AND t.transaction_date BETWEEN ? AND ? " +
-                "ORDER BY t.transaction_date DESC";
-
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, collectivityId);
-            ps.setDate(2, Date.valueOf(from));
-            ps.setDate(3, Date.valueOf(to));
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    transactions.add(map(rs));
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, collectivityId);
+            stmt.setDate(2, Date.valueOf(from));
+            stmt.setDate(3, Date.valueOf(to));
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                TransactionEntity transaction = new TransactionEntity();
+                transaction.setId(rs.getString("id"));
+                transaction.setMemberId(rs.getString("member_id"));
+                transaction.setCollectivityId(rs.getString("collectivity_id"));
+                transaction.setAmount(rs.getBigDecimal("amount"));
+                transaction.setPaymentMode(rs.getString("payment_mode"));
+                transaction.setAccountCreditedId(rs.getString("account_credited_id"));
+                String feeId = rs.getString("membership_fee_id");
+                if (!rs.wasNull()) {
+                    transaction.setMembershipFeeId(feeId);
                 }
+                transaction.setCreationDate(rs.getDate("creation_date").toLocalDate());
+                transactions.add(transaction);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur findByCollectivityId: " + e.getMessage(), e);
         }
         return transactions;
     }
 
-    private TransactionEntity map(ResultSet rs) throws SQLException {
-        TransactionEntity t = new TransactionEntity();
-        t.setId(rs.getString("id"));
-        t.setAccountId(rs.getString("account_id"));
-        t.setMemberId(rs.getString("member_id"));
-        t.setTransactionType(rs.getString("transaction_type"));
-        t.setAmount(rs.getDouble("amount"));
-        t.setPaymentMethod(rs.getString("payment_method"));
-        t.setTransactionDate(rs.getDate("transaction_date").toLocalDate());
-        t.setLabel(rs.getString("label"));
-        return t;
-    }
-    public Double getTotalContributionsByMember(String memberId, LocalDate from, LocalDate to) {
-        String sql = "SELECT COALESCE(SUM(amount), 0) FROM transaction " +
-                "WHERE member_id = ? AND transaction_type = 'CONTRIBUTION' " +
-                "AND transaction_date BETWEEN ? AND ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, memberId);
-            ps.setDate(2, Date.valueOf(from));
-            ps.setDate(3, Date.valueOf(to));
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getDouble(1);
-                }
+    public void insert(Connection conn, TransactionEntity transaction) throws SQLException {
+        String sql = "INSERT INTO transaction (id, member_id, collectivity_id, amount, payment_mode, account_credited_id, membership_fee_id, creation_date) " +
+                "VALUES (?, ?, ?, ?, CAST(? as payment_mode_enum), ?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, transaction.getId());
+            stmt.setString(2, transaction.getMemberId());
+            stmt.setString(3, transaction.getCollectivityId());
+            stmt.setBigDecimal(4, transaction.getAmount());
+            stmt.setString(5, transaction.getPaymentMode());
+            stmt.setString(6, transaction.getAccountCreditedId());
+            if (transaction.getMembershipFeeId() != null) {
+                stmt.setString(7, transaction.getMembershipFeeId());
+            } else {
+                stmt.setNull(7, Types.VARCHAR);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur getTotalContributionsByMember", e);
+            stmt.setDate(8, Date.valueOf(transaction.getCreationDate()));
+            stmt.executeUpdate();
         }
-        return 0.0;
     }
 }

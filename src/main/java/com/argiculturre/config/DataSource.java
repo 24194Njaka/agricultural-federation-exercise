@@ -14,14 +14,12 @@ public class DataSource {
     private final String password;
 
     public DataSource() {
-        // Afficher le répertoire de travail pour debug
-        String userDir = System.getProperty("user.dir");
+         String userDir = System.getProperty("user.dir");
         System.out.println("Working Directory: " + userDir);
 
-        // Charger Dotenv avec le chemin absolu
         Dotenv dotenv = Dotenv.configure()
-                .directory(userDir)  // Utiliser le répertoire courant
-                .ignoreIfMissing()  // Ne pas ignorer si manquant
+                .directory(userDir)
+                .ignoreIfMissing()
                 .load();
 
         this.jdbcUrl = dotenv.get("JDBC_URL");

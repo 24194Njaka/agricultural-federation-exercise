@@ -3,103 +3,85 @@ package com.argiculturre.repository;
 import com.argiculturre.config.DataSource;
 import com.argiculturre.entity.MembershipFeeEntity;
 import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class MembershipFeeRepository {
 
-    private final DataSource dataSource;
-
-    public MembershipFeeRepository(DataSource dataSource) {
-        this.dataSource = dataSource;
-    }
-
-    public MembershipFeeEntity save(MembershipFeeEntity fee) {
-        String sql = "INSERT INTO membership_fee (id, collectivity_id, label, amount, frequency, status, start_date, end_date, description, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, fee.getId());
-            ps.setString(2, fee.getCollectivityId());
-            ps.setString(3, fee.getLabel());
-            ps.setDouble(4, fee.getAmount());
-            ps.setString(5, fee.getFrequency());
-            ps.setString(6, fee.getStatus());
-            ps.setDate(7, fee.getStartDate() != null ? Date.valueOf(fee.getStartDate()) : null);
-            ps.setDate(8, fee.getEndDate() != null ? Date.valueOf(fee.getEndDate()) : null);
-            ps.setString(9, fee.getDescription());
-            ps.setTimestamp(10, Timestamp.valueOf(LocalDate.now().atStartOfDay()));
-            ps.executeUpdate();
-            return fee;
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur save membership fee: " + e.getMessage(), e);
-        }
-    }
-
-    public List<MembershipFeeEntity> findByCollectivityId(String collectivityId) {
+    public List<MembershipFeeEntity> findByCollectivityId(Connection conn, String collectivityId) throws SQLException {
+        String sql = "SELECT id, collectivity_id, eligible_from, frequency, amount, label, status " +
+                "FROM membership_fee WHERE collectivity_id = ? ORDER BY eligible_from DESC";
         List<MembershipFeeEntity> fees = new ArrayList<>();
-        String sql = "SELECT id, collectivity_id, label, amount, frequency, start_date, end_date, description, created_at " +
-                "FROM membership_fee WHERE collectivity_id = ? ORDER BY start_date DESC";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, collectivityId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    fees.add(map(rs));
-                }
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, collectivityId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                MembershipFeeEntity fee = new MembershipFeeEntity();
+                fee.setId(rs.getString("id"));
+                fee.setCollectivityId(rs.getString("collectivity_id"));
+                fee.setEligibleFrom(rs.getDate("eligible_from").toLocalDate());
+                fee.setFrequency(rs.getString("frequency"));
+                fee.setAmount(rs.getBigDecimal("amount"));
+                fee.setLabel(rs.getString("label"));
+                fee.setStatus(rs.getString("status"));
+                fees.add(fee);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur findByCollectivityId: " + e.getMessage(), e);
         }
         return fees;
     }
 
-    private MembershipFeeEntity map(ResultSet rs) throws SQLException {
-        MembershipFeeEntity fee = new MembershipFeeEntity();
-        fee.setId(rs.getString("id"));
-        fee.setCollectivityId(rs.getString("collectivity_id"));
-        fee.setLabel(rs.getString("label"));
-        fee.setAmount(rs.getDouble("amount"));
-        fee.setFrequency(rs.getString("frequency"));
-        fee.setStatus(rs.getString("status"));
-        Date startDate = rs.getDate("start_date");
-        if (startDate != null) {
-            fee.setStartDate(startDate.toLocalDate());
+    // MODIFICATION 2: insert avec id explicite (plus de RETURNING id)
+    public void insert(Connection conn, MembershipFeeEntity fee) throws SQLException {
+        String sql = "INSERT INTO membership_fee (id, collectivity_id, eligible_from, frequency, amount, label, status) " +
+                "VALUES (?, ?, ?, CAST(? as frequency_enum), ?, ?, CAST(? as activity_status_enum))";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, fee.getId());
+            stmt.setString(2, fee.getCollectivityId());
+            stmt.setDate(3, Date.valueOf(fee.getEligibleFrom()));
+            stmt.setString(4, fee.getFrequency());
+            stmt.setBigDecimal(5, fee.getAmount());
+            stmt.setString(6, fee.getLabel());
+            stmt.setString(7, fee.getStatus() != null ? fee.getStatus() : "ACTIVE");
+            stmt.executeUpdate();
         }
-
-        Date endDate = rs.getDate("end_date");
-        if (endDate != null) {
-            fee.setEndDate(endDate.toLocalDate());
-        }
-
-        fee.setDescription(rs.getString("description"));
-
-        Timestamp createdAt = rs.getTimestamp("created_at");
-        if (createdAt != null) {
-            fee.setCreatedAt(createdAt.toLocalDateTime().toLocalDate());
-        }
-
-        return fee;
     }
-    public List<MembershipFeeEntity> findActiveByCollectivity(String collectivityId) {
-        List<MembershipFeeEntity> fees = new ArrayList<>();
-        String sql = "SELECT id, collectivity_id, label, amount, frequency, status, start_date, end_date, description, created_at " +
-                "FROM membership_fee WHERE collectivity_id = ? AND status = 'ACTIVE' ORDER BY start_date DESC";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, collectivityId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    fees.add(map(rs));
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur findActiveByCollectivityId: " + e.getMessage(), e);
-        }
-        return fees;
 
+    public boolean existsDuplicate(Connection conn, String collectivityId, LocalDate eligibleFrom, String frequency, BigDecimal amount) throws SQLException {
+        String sql = "SELECT 1 FROM membership_fee WHERE collectivity_id = ? AND eligible_from = ? AND frequency = ? AND amount = ? LIMIT 1";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, collectivityId);
+            stmt.setDate(2, Date.valueOf(eligibleFrom));
+            stmt.setString(3, frequency);
+            stmt.setBigDecimal(4, amount);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+        }
+    }
+
+    public Optional<MembershipFeeEntity> findById(Connection conn, String id) throws SQLException {
+        String sql = "SELECT id, collectivity_id, eligible_from, frequency, amount, label, status " +
+                "FROM membership_fee WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                MembershipFeeEntity fee = new MembershipFeeEntity();
+                fee.setId(rs.getString("id"));
+                fee.setCollectivityId(rs.getString("collectivity_id"));
+                fee.setEligibleFrom(rs.getDate("eligible_from").toLocalDate());
+                fee.setFrequency(rs.getString("frequency"));
+                fee.setAmount(rs.getBigDecimal("amount"));
+                fee.setLabel(rs.getString("label"));
+                fee.setStatus(rs.getString("status"));
+                return Optional.of(fee);
+            }
+            return Optional.empty();
+        }
     }
 }
