@@ -77,4 +77,23 @@ public class TransactionRepository {
         t.setLabel(rs.getString("label"));
         return t;
     }
+    public Double getTotalContributionsByMember(String memberId, LocalDate from, LocalDate to) {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM transaction " +
+                "WHERE member_id = ? AND transaction_type = 'CONTRIBUTION' " +
+                "AND transaction_date BETWEEN ? AND ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, memberId);
+            ps.setDate(2, Date.valueOf(from));
+            ps.setDate(3, Date.valueOf(to));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble(1);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur getTotalContributionsByMember", e);
+        }
+        return 0.0;
+    }
 }

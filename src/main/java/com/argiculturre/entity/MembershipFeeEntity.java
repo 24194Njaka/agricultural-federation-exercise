@@ -14,6 +14,7 @@ public class MembershipFeeEntity {
     private String label;
     private Double amount;
     private String frequency;
+    private String status;
     private LocalDate startDate;
     private LocalDate endDate;
     private String description;

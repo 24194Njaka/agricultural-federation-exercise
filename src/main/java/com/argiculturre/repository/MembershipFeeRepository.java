@@ -83,4 +83,22 @@ public class MembershipFeeRepository {
 
         return fee;
     }
+    public List<MembershipFeeEntity> findActiveByCollectivity(String collectivityId) {
+        List<MembershipFeeEntity> fees = new ArrayList<>();
+        String sql = "SELECT id, collectivity_id, label, amount, frequency, status, start_date, end_date, description, created_at " +
+                "FROM membership_fee WHERE collectivity_id = ? AND status = 'ACTIVE' ORDER BY start_date DESC";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, collectivityId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    fees.add(map(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findActiveByCollectivityId: " + e.getMessage(), e);
+        }
+        return fees;
+
+    }
 }
