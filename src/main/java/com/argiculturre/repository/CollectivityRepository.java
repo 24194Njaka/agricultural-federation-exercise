@@ -11,6 +11,12 @@ import java.util.Optional;
 @Repository
 public class CollectivityRepository {
 
+    private final DataSource dataSource;
+
+    public CollectivityRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
     public void insert(Connection conn, CollectivityEntity collectivity) throws SQLException {
         String sql = "INSERT INTO collectivity (id, location, specialite_agricole, annual_dues_amount, date_creation, federation_approval, name, number) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -29,6 +35,58 @@ public class CollectivityRepository {
             }
             stmt.executeUpdate();
         }
+    }
+
+    public CollectivityEntity findById(String id) {
+        String sql = "SELECT id, location, specialite_agricole, annual_dues_amount, date_creation, federation_approval, name, number " +
+                "FROM collectivity WHERE id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                CollectivityEntity c = new CollectivityEntity();
+                c.setId(rs.getString("id"));
+                c.setLocation(rs.getString("location"));
+                c.setSpecialiteAgricole(rs.getString("specialite_agricole"));
+                c.setAnnualDuesAmount(rs.getInt("annual_dues_amount"));
+                c.setDateCreation(rs.getDate("date_creation").toLocalDate());
+                c.setFederationApproval(rs.getBoolean("federation_approval"));
+                c.setName(rs.getString("name"));
+                int number = rs.getInt("number");
+                c.setNumber(rs.wasNull() ? null : number);
+                return c;
+            }
+            return null;
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findById: " + e.getMessage(), e);
+        }
+    }
+
+    public List<CollectivityEntity> findAll() {
+        List<CollectivityEntity> collectivities = new ArrayList<>();
+        String sql = "SELECT id, location, specialite_agricole, annual_dues_amount, date_creation, federation_approval, name, number " +
+                "FROM collectivity";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                CollectivityEntity c = new CollectivityEntity();
+                c.setId(rs.getString("id"));
+                c.setLocation(rs.getString("location"));
+                c.setSpecialiteAgricole(rs.getString("specialite_agricole"));
+                c.setAnnualDuesAmount(rs.getInt("annual_dues_amount"));
+                c.setDateCreation(rs.getDate("date_creation").toLocalDate());
+                c.setFederationApproval(rs.getBoolean("federation_approval"));
+                c.setName(rs.getString("name"));
+                int number = rs.getInt("number");
+                c.setNumber(rs.wasNull() ? null : number);
+                collectivities.add(c);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findAll: " + e.getMessage(), e);
+        }
+        return collectivities;
     }
 
     public Optional<CollectivityEntity> findById(Connection conn, String id) throws SQLException {
@@ -53,6 +111,7 @@ public class CollectivityRepository {
             return Optional.empty();
         }
     }
+
     public boolean hasNameAndNumber(Connection conn, String id) throws SQLException {
         String sql = "SELECT name, number FROM collectivity WHERE id = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -79,6 +138,7 @@ public class CollectivityRepository {
             if (updated == 0) throw new SQLException("Collectivity not found");
         }
     }
+
     public boolean isNameUsed(Connection conn, String name, String excludeId) throws SQLException {
         String sql = "SELECT 1 FROM collectivity WHERE name = ? AND id != ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {

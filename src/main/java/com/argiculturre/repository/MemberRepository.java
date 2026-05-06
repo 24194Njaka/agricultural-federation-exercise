@@ -13,6 +13,12 @@ import java.util.Optional;
 @Repository
 public class MemberRepository {
 
+    private final DataSource dataSource;
+
+    public MemberRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
     public Optional<MemberEntity> findById(Connection conn, String id) throws SQLException {
         String sql = "SELECT id, first_name, last_name, birth_date, gender, address, profession, phone_number, email, date_adhesion_federation FROM member WHERE id = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -83,5 +89,24 @@ public class MemberRepository {
         m.setEmail(rs.getString("email"));
         m.setDateAdhesionFederation(rs.getDate("date_adhesion_federation").toLocalDate());
         return m;
+    }
+    public List<MemberEntity> findByCollectivityId(String collectivityId) {
+        List<MemberEntity> members = new ArrayList<>();
+        String sql = "SELECT id, first_name, last_name, birth_date, gender, address, profession, phone_number, email, date_adhesion_federation " +
+                "FROM member m " +
+                "JOIN membership ms ON m.id = ms.member_id " +
+                "WHERE ms.collectivity_id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, collectivityId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    members.add(map(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findByCollectivityId: " + e.getMessage(), e);
+        }
+        return members;
     }
 }
