@@ -1,11 +1,12 @@
 package com.argiculturre.dto.response;
 
 import lombok.Data;
+import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class FederationStatisticsResponse {
-    private String collectivityId;
-    private String collectivityName;
-    private Double contributionCompilianceRate;
-    private Integer newMembersCount;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private List<CollectivityGlobalStatistic> collectivityStatistics;
 }

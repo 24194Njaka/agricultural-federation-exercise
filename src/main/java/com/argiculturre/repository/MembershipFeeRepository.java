@@ -18,7 +18,7 @@ public class MembershipFeeRepository {
     }
 
     public MembershipFeeEntity save(MembershipFeeEntity fee) {
-        String sql = "INSERT INTO membership_fee (id, collectivity_id, label, amount, frequency, start_date, end_date, description, created_at) " +
+        String sql = "INSERT INTO membership_fee (id, collectivity_id, label, amount, frequency, status, start_date, end_date, description, created_at) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -27,10 +27,11 @@ public class MembershipFeeRepository {
             ps.setString(3, fee.getLabel());
             ps.setDouble(4, fee.getAmount());
             ps.setString(5, fee.getFrequency());
-            ps.setDate(6, fee.getStartDate() != null ? Date.valueOf(fee.getStartDate()) : null);
-            ps.setDate(7, fee.getEndDate() != null ? Date.valueOf(fee.getEndDate()) : null);
-            ps.setString(8, fee.getDescription());
-            ps.setTimestamp(9, Timestamp.valueOf(LocalDate.now().atStartOfDay()));
+            ps.setString(6, fee.getStatus());
+            ps.setDate(7, fee.getStartDate() != null ? Date.valueOf(fee.getStartDate()) : null);
+            ps.setDate(8, fee.getEndDate() != null ? Date.valueOf(fee.getEndDate()) : null);
+            ps.setString(9, fee.getDescription());
+            ps.setTimestamp(10, Timestamp.valueOf(LocalDate.now().atStartOfDay()));
             ps.executeUpdate();
             return fee;
         } catch (SQLException e) {
@@ -63,7 +64,7 @@ public class MembershipFeeRepository {
         fee.setLabel(rs.getString("label"));
         fee.setAmount(rs.getDouble("amount"));
         fee.setFrequency(rs.getString("frequency"));
-
+        fee.setStatus(rs.getString("status"));
         Date startDate = rs.getDate("start_date");
         if (startDate != null) {
             fee.setStartDate(startDate.toLocalDate());
