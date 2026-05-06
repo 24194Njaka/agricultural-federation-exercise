@@ -1,22 +1,20 @@
-package com.argiculturre.entity;
+package com.argiculturre.dto;
 
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+
 import java.time.LocalDate;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class MemberEntity {
-    private String id;
+public class MemberInformation {
     private String firstName;
     private String lastName;
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate birthDate;
-    private String gender;
+    private Gender gender;
     private String address;
     private String profession;
     private String phoneNumber;
     private String email;
-    private LocalDate dateAdhesionFederation;
-}
+    private MemberOccupation occupation;
+ }

@@ -2,154 +2,123 @@ package com.argiculturre.repository;
 
 import com.argiculturre.config.DataSource;
 import com.argiculturre.entity.CollectivityEntity;
-import com.argiculturre.entity.TypeStatus;
 import org.springframework.stereotype.Repository;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class CollectivityRepository {
 
-    private final DataSource dataSource;
-
-    public CollectivityRepository(DataSource dataSource) {
-        this.dataSource = dataSource;
-    }
-
-    public CollectivityEntity save(CollectivityEntity c) {
-        String sql = "INSERT INTO collectivity (id, number, name, location, specialisation, creation_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, c.getId());
-            ps.setString(2, c.getNumber());
-            ps.setString(3, c.getName());
-            ps.setString(4, c.getLocation());
-            ps.setString(5, c.getSpecialisation());
-            ps.setDate(6, Date.valueOf(c.getCreationDate()));
-            ps.setString(7, c.getStatus().name());
-            ps.executeUpdate();
-            return c;
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur save collectivity", e);
-        }
-    }
-
-    public CollectivityEntity findById(String id) {
-        String sql = "SELECT id, number, name, location, specialisation, creation_date, status FROM collectivity WHERE id = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return map(rs);
-                }
+    public void insert(Connection conn, CollectivityEntity collectivity) throws SQLException {
+        String sql = "INSERT INTO collectivity (id, location, specialite_agricole, annual_dues_amount, date_creation, federation_approval, name, number) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, collectivity.getId());
+            stmt.setString(2, collectivity.getLocation());
+            stmt.setString(3, collectivity.getSpecialiteAgricole());
+            stmt.setInt(4, collectivity.getAnnualDuesAmount());
+            stmt.setDate(5, Date.valueOf(collectivity.getDateCreation()));
+            stmt.setBoolean(6, collectivity.getFederationApproval());
+            stmt.setString(7, collectivity.getName());
+            if (collectivity.getNumber() != null) {
+                stmt.setInt(8, collectivity.getNumber());
+            } else {
+                stmt.setNull(8, Types.INTEGER);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur findById", e);
+            stmt.executeUpdate();
         }
-        return null;
     }
 
-    public boolean existsByNumber(String number) {
-        String sql = "SELECT 1 FROM collectivity WHERE number = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, number);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
+    public Optional<CollectivityEntity> findById(Connection conn, String id) throws SQLException {
+        String sql = "SELECT id, location, specialite_agricole, annual_dues_amount, date_creation, federation_approval, name, number " +
+                "FROM collectivity WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                CollectivityEntity c = new CollectivityEntity();
+                c.setId(rs.getString("id"));
+                c.setLocation(rs.getString("location"));
+                c.setSpecialiteAgricole(rs.getString("specialite_agricole"));
+                c.setAnnualDuesAmount(rs.getInt("annual_dues_amount"));
+                c.setDateCreation(rs.getDate("date_creation").toLocalDate());
+                c.setFederationApproval(rs.getBoolean("federation_approval"));
+                c.setName(rs.getString("name"));
+                int number = rs.getInt("number");
+                c.setNumber(rs.wasNull() ? null : number);
+                return Optional.of(c);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur existsByNumber", e);
+            return Optional.empty();
         }
     }
-
-    public boolean existsByName(String name) {
-        String sql = "SELECT 1 FROM collectivity WHERE name = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, name);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
+    public boolean hasNameAndNumber(Connection conn, String id) throws SQLException {
+        String sql = "SELECT name, number FROM collectivity WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("name") != null && rs.getObject("number") != null;
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur existsByName", e);
+            return false;
         }
     }
 
-    public void updateNumberAndName(String id, String number, String name) {
-        String sql = "UPDATE collectivity SET number = ?, name = ? WHERE id = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, number);
-            ps.setString(2, name);
-            ps.setString(3, id);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur updateNumberAndName", e);
-        }
-    }
-
-    public boolean hasNumberAndName(String id) {
-        String sql = "SELECT number, name FROM collectivity WHERE id = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("number") != null && rs.getString("name") != null;
-                }
+    public void updateNameAndNumber(Connection conn, String id, String name, Integer number) throws SQLException {
+        String sql = "UPDATE collectivity SET name = ?, number = ? WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            if (number != null) {
+                stmt.setInt(2, number);
+            } else {
+                stmt.setNull(2, Types.INTEGER);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur hasNumberAndName", e);
+            stmt.setString(3, id);
+            int updated = stmt.executeUpdate();
+            if (updated == 0) throw new SQLException("Collectivity not found");
         }
-        return false;
+    }
+    public boolean isNameUsed(Connection conn, String name, String excludeId) throws SQLException {
+        String sql = "SELECT 1 FROM collectivity WHERE name = ? AND id != ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            stmt.setString(2, excludeId);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+        }
     }
 
-    public int countMembers(String collectivityId) {
-        String sql = "SELECT COUNT(id) FROM member WHERE collectivity_id = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, collectivityId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getInt(1);
+    public boolean isNumberUsed(Connection conn, Integer number, String excludeId) throws SQLException {
+        String sql = "SELECT 1 FROM collectivity WHERE number = ? AND id != ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, number);
+            stmt.setString(2, excludeId);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+        }
+    }
+
+    public Optional<CollectivityEntity> findByIdWithDetails(Connection conn, String id) throws SQLException {
+        String sql = "SELECT id, location, name, number, specialite_agricole, annual_dues_amount, date_creation, federation_approval " +
+                "FROM collectivity WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                CollectivityEntity entity = new CollectivityEntity();
+                entity.setId(rs.getString("id"));
+                entity.setLocation(rs.getString("location"));
+                entity.setName(rs.getString("name"));
+                int number = rs.getInt("number");
+                entity.setNumber(rs.wasNull() ? null : number);
+                entity.setSpecialiteAgricole(rs.getString("specialite_agricole"));
+                entity.setAnnualDuesAmount(rs.getInt("annual_dues_amount"));
+                entity.setDateCreation(rs.getDate("date_creation").toLocalDate());
+                entity.setFederationApproval(rs.getBoolean("federation_approval"));
+                return Optional.of(entity);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur countMembers", e);
+            return Optional.empty();
         }
-        return 0;
-    }
-
-    public List<CollectivityEntity> findAll() {
-        List<CollectivityEntity> collectivities = new ArrayList<>();
-        String sql = "SELECT id, number, name, location, specialisation, creation_date, status FROM collectivity";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                collectivities.add(map(rs));
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur findAll", e);
-        }
-        return collectivities;
-    }
-
-    private CollectivityEntity map(ResultSet rs) throws SQLException {
-        System.out.println("=== MAP DEBUG ===");
-        System.out.println("id: " + rs.getString("id"));
-        System.out.println("name: " + rs.getString("name"));
-        System.out.println("specialisation: " + rs.getString("specialisation"));
-        System.out.println("================");
-
-        CollectivityEntity c = new CollectivityEntity();
-        c.setId(rs.getString("id"));
-        c.setNumber(rs.getString("number"));
-        c.setName(rs.getString("name"));
-        c.setLocation(rs.getString("location"));
-        c.setSpecialisation(rs.getString("specialisation"));
-        c.setCreationDate(rs.getDate("creation_date").toLocalDate());
-        c.setStatus(TypeStatus.valueOf(rs.getString("status")));
-        return c;
     }
 }

@@ -1,201 +1,262 @@
 package com.argiculturre.service;
 
-import com.argiculturre.dto.request.AssignIdentityRequest;
-import com.argiculturre.dto.request.CreateCollectivityRequest;
-import com.argiculturre.dto.response.CollectivityResponse;
-import com.argiculturre.dto.response.MemberResponse;
+import com.argiculturre.config.DataSource;
+import com.argiculturre.dto.*;
 import com.argiculturre.entity.*;
-import com.argiculturre.repository.AccountRepository;
+import com.argiculturre.exception.BusinessRuleException;
+import com.argiculturre.exception.ResourceNotFoundException;
 import com.argiculturre.repository.CollectivityRepository;
 import com.argiculturre.repository.MemberRepository;
+import com.argiculturre.repository.MembershipRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class CollectivityService {
 
-    private final CollectivityRepository collectivityRepository;
+    private final DataSource dataSource;
     private final MemberRepository memberRepository;
-    private final AccountRepository accountRepository;
+    private final CollectivityRepository collectivityRepository;
+    private final MembershipRepository membershipRepository;
 
-    @Transactional
-    public CollectivityResponse createCollectivity(CreateCollectivityRequest request) {
-        if (request.getMembers() == null || request.getMembers().size() < 10) {
-            throw new RuntimeException("Need at least 10 members");
+    public List<Collectivity> createCollectivities(List<CreateCollectivity> createList) {
+        List<Collectivity> results = new ArrayList<>();
+        for (CreateCollectivity create : createList) {
+            results.add(createSingleCollectivity(create));
         }
-
-        List<String> memberIds = request.getMembers().stream()
-                .map(m -> String.valueOf(m.getId()))
-                .collect(Collectors.toList());
-
-        List<MemberEntity> existingMembers = memberRepository.findByIds(memberIds);
-        if (existingMembers.size() != memberIds.size()) {
-            throw new RuntimeException("Some members do not exist");
-        }
-
-        LocalDate sixMonthsAgo = LocalDate.now().minusMonths(6);
-        long seniorCount = existingMembers.stream()
-                .filter(m -> m.getMembershipDate() != null && m.getMembershipDate().isBefore(sixMonthsAgo))
-                .count();
-        if (seniorCount < 5) {
-            throw new RuntimeException("Need 5 members with 6+ months seniority");
-        }
-
-        boolean hasPresident = request.getMembers().stream().anyMatch(m -> "PRESIDENT".equals(m.getRole()));
-        boolean hasVicePresident = request.getMembers().stream().anyMatch(m -> "VICE_PRESIDENT".equals(m.getRole()));
-        boolean hasTreasurer = request.getMembers().stream().anyMatch(m -> "TREASURER".equals(m.getRole()));
-        boolean hasSecretary = request.getMembers().stream().anyMatch(m -> "SECRETARY".equals(m.getRole()));
-
-        if (!hasPresident) throw new RuntimeException("Missing PRESIDENT");
-        if (!hasVicePresident) throw new RuntimeException("Missing VICE_PRESIDENT");
-        if (!hasTreasurer) throw new RuntimeException("Missing TREASURER");
-        if (!hasSecretary) throw new RuntimeException("Missing SECRETARY");
-
-        CollectivityEntity collectivity = new CollectivityEntity();
-        collectivity.setLocation(request.getLocation());
-        collectivity.setCreationDate(LocalDate.now());
-        collectivity.setStatus(TypeStatus.PENDING);
-        CollectivityEntity saved = collectivityRepository.save(collectivity);
-
-        for (CreateCollectivityRequest.MemberInfo memberInfo : request.getMembers()) {
-            String memberId = String.valueOf(memberInfo.getId());
-            MemberRole role = MemberRole.valueOf(memberInfo.getRole());
-            memberRepository.updateRoleAndCollectivity(memberId, role, saved.getId());
-        }
-
-        return buildResponse(saved, existingMembers);
+        return results;
     }
 
-    public List<CollectivityEntity> getAllCollectivities() {
-        return collectivityRepository.findAll();
+    private Collectivity createSingleCollectivity(CreateCollectivity create) {
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                 if (create.getFederationApproval() == null || !create.getFederationApproval()) {
+                    throw new BusinessRuleException("Federation approval must be true");
+                }
+                 List<String> memberIds = create.getMembers();
+                if (memberIds == null || memberIds.size() < 10) {
+                    throw new BusinessRuleException("At least 10 members required");
+                }
+
+                List<MemberEntity> members = memberRepository.findByIds(conn, memberIds);
+                if (members.size() != memberIds.size()) {
+                    throw new ResourceNotFoundException("Some members not found");
+                }
+
+                LocalDate sixMonthsAgo = LocalDate.now().minusMonths(6);
+                for (MemberEntity m : members) {
+                    if (m.getDateAdhesionFederation().isAfter(sixMonthsAgo)) {
+                        throw new BusinessRuleException("Member " + m.getId() + " has less than 6 months seniority");
+                    }
+                }
+
+                CreateCollectivityStructure structure = create.getStructure();
+                if (structure == null) {
+                    throw new BusinessRuleException("Structure (president, vicePresident, treasurer, secretary) is required");
+                }
+                Set<String> roleIds = new HashSet<>();
+                roleIds.add(structure.getPresident());
+                roleIds.add(structure.getVicePresident());
+                roleIds.add(structure.getTreasurer());
+                roleIds.add(structure.getSecretary());
+                if (roleIds.size() != 4) {
+                    throw new BusinessRuleException("President, vice-president, treasurer and secretary must be distinct");
+                }
+                Set<String> memberIdSet = new HashSet<>(memberIds);
+                for (String roleId : roleIds) {
+                    if (!memberIdSet.contains(roleId)) {
+                        throw new BusinessRuleException("Role member " + roleId + " not in members list");
+                    }
+                }
+
+                String collectivityId = generateCollectivityId();
+
+                CollectivityEntity collectivityEntity = new CollectivityEntity();
+                collectivityEntity.setId(collectivityId);
+                collectivityEntity.setLocation(create.getLocation());
+                collectivityEntity.setSpecialiteAgricole("inconnue");
+                collectivityEntity.setAnnualDuesAmount(0);
+                collectivityEntity.setDateCreation(LocalDate.now());
+                collectivityEntity.setFederationApproval(true);
+                collectivityEntity.setNumber(null);
+                collectivityEntity.setName(null);
+                collectivityRepository.insert(conn, collectivityEntity);
+
+                LocalDate now = LocalDate.now();
+                for (String memberId : memberIds) {
+                    MembershipEntity ms = new MembershipEntity();
+                    ms.setMemberId(memberId);
+                    ms.setCollectivityId(collectivityId);
+                    String occupation;
+                    if (memberId.equals(structure.getPresident())) {
+                        occupation = "PRESIDENT";
+                    } else if (memberId.equals(structure.getVicePresident())) {
+                        occupation = "VICE_PRESIDENT";
+                    } else if (memberId.equals(structure.getTreasurer())) {
+                        occupation = "TREASURER";
+                    } else if (memberId.equals(structure.getSecretary())) {
+                        occupation = "SECRETARY";
+                    } else {
+                        occupation = "JUNIOR";
+                    }
+                    ms.setOccupation(occupation);
+                    ms.setRegistrationFeePaid(true);
+                    ms.setMembershipDuesPaid(true);
+                    ms.setDateAdhesion(now);
+                    ms.setPaymentDate(now);
+                    membershipRepository.insert(conn, ms);
+                }
+
+                CollectivityEntity savedEntity = collectivityRepository.findById(conn, collectivityId)
+                        .orElseThrow(() -> new RuntimeException("Collectivity not found after insertion"));
+
+                conn.commit();
+
+                return toCollectivityDto(savedEntity, conn);
+
+            } catch (SQLException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error", e);
+        }
     }
 
-     @Transactional
-    public CollectivityResponse assignIdentity(String id, AssignIdentityRequest request) {
-        CollectivityEntity collectivity = collectivityRepository.findById(id);
-        if (collectivity == null) {
-            throw new RuntimeException("Collectivity not found");
-        }
-
-        if (collectivityRepository.hasNumberAndName(id)) {
-            throw new RuntimeException("Number and name already assigned, cannot be changed");
-        }
-
-        if (collectivityRepository.existsByNumber(request.getNumber())) {
-            throw new RuntimeException("Number already exists");
-        }
-
-        if (collectivityRepository.existsByName(request.getName())) {
-            throw new RuntimeException("Name already exists");
-        }
-
-        if (request.getNumber() == null || request.getNumber().trim().isEmpty()) {
-            throw new RuntimeException("Number is required");
-        }
-        if (request.getName() == null || request.getName().trim().isEmpty()) {
-            throw new RuntimeException("Name is required");
-        }
-
-        collectivityRepository.updateNumberAndName(id, request.getNumber(), request.getName());
-
-        CollectivityEntity updated = collectivityRepository.findById(id);
-        return mapToResponse(updated);
+    private String generateCollectivityId() {
+        return "col-" + UUID.randomUUID().toString().substring(0, 8);
     }
 
-    private CollectivityResponse buildResponse(CollectivityEntity collectivity, List<MemberEntity> members) {
-        CollectivityResponse response = new CollectivityResponse();
-        response.setId(collectivity.getId());
-        response.setNumber(collectivity.getNumber());
-        response.setName(collectivity.getName());
-        response.setLocation(collectivity.getLocation());
-        response.setCreationDate(collectivity.getCreationDate());
-        response.setStatus(collectivity.getStatus().name());
-        response.setMemberCount(members.size());
+    private Member toMemberDto(MemberEntity entity) {
+        Member dto = new Member();
+        dto.setId(entity.getId());
+        dto.setFirstName(entity.getFirstName());
+        dto.setLastName(entity.getLastName());
+        dto.setBirthDate(entity.getBirthDate());
+        dto.setGender(Gender.valueOf(entity.getGender()));
+        dto.setAddress(entity.getAddress());
+        dto.setProfession(entity.getProfession());
+        dto.setPhoneNumber(entity.getPhoneNumber());
+        dto.setEmail(entity.getEmail());
+        return dto;
+    }
 
-        List<MemberResponse> memberResponses = new ArrayList<>();
-        for (MemberEntity m : members) {
-            MemberResponse mr = new MemberResponse();
-            mr.setId(m.getId());
-            mr.setFirstName(m.getFirstName());
-            mr.setLastName(m.getLastName());
-            mr.setRole(m.getRole().name());
-            memberResponses.add(mr);
+    private Collectivity toCollectivityDto(CollectivityEntity entity, Connection conn) throws SQLException {
+        // Récupérer tous les membres de cette collectivité (via membership)
+        List<MembershipEntity> memberships = membershipRepository.findByCollectivityId(conn, entity.getId());
+
+        // Construire la map des membres (id -> Member DTO)
+        Map<String, Member> memberMap = new HashMap<>();
+        for (MembershipEntity ms : memberships) {
+            Optional<MemberEntity> optMember = memberRepository.findById(conn, ms.getMemberId());
+            optMember.ifPresent(memberEntity -> {
+                Member memberDto = toMemberDto(memberEntity);
+                memberMap.put(memberEntity.getId(), memberDto);
+            });
         }
-        response.setMembers(memberResponses);
 
-        return response;
-    }
-
-    public CollectivityEntity getCollectivityById(String id) {
-        CollectivityEntity collectivity = collectivityRepository.findById(id);
-        if (collectivity == null) {
-            throw new RuntimeException("Collectivity not found");
+        CollectivityStructure struct = new CollectivityStructure();
+        for (MembershipEntity ms : memberships) {
+            Member m = memberMap.get(ms.getMemberId());
+            if (m == null) continue;
+            switch (ms.getOccupation()) {
+                case "PRESIDENT":
+                    struct.setPresident(m);
+                    break;
+                case "VICE_PRESIDENT":
+                    struct.setVicePresident(m);
+                    break;
+                case "TREASURER":
+                    struct.setTreasurer(m);
+                    break;
+                case "SECRETARY":
+                    struct.setSecretary(m);
+                    break;
+            }
         }
-        return collectivity;
+
+        Collectivity dto = new Collectivity();
+        dto.setId(entity.getId());
+        dto.setLocation(entity.getLocation());
+        dto.setNumber(entity.getNumber());
+        dto.setName(entity.getName());
+        dto.setStructure(struct);
+        dto.setMembers(new ArrayList<>(memberMap.values()));
+
+        return dto;
     }
 
-    public List<FinancialAccountResponse> getFinancialAccounts(String collectivityId, LocalDate atDate) {
-        CollectivityEntity collectivity = collectivityRepository.findById(collectivityId);
-        if (collectivity == null) {
-            throw new RuntimeException("Collectivity not found");
+    private Member toMemberDto(MemberEntity entity, List<Member> referees) {
+        Member dto = new Member();
+        dto.setId(entity.getId());
+        dto.setFirstName(entity.getFirstName());
+        dto.setLastName(entity.getLastName());
+        dto.setBirthDate(entity.getBirthDate());
+        dto.setGender(Gender.valueOf(entity.getGender()));
+        dto.setAddress(entity.getAddress());
+        dto.setProfession(entity.getProfession());
+        dto.setPhoneNumber(entity.getPhoneNumber());
+        dto.setEmail(entity.getEmail());
+        dto.setReferees(referees);
+        return dto;
+    }
+
+    public Collectivity updateCollectivityInformation(String idStr, CollectivityInformation info) {
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                String id = idStr;
+
+                CollectivityEntity entity = collectivityRepository.findById(conn, id)
+                        .orElseThrow(() -> new ResourceNotFoundException("Collectivity not found"));
+
+                if (collectivityRepository.hasNameAndNumber(conn, id)) {
+                    throw new BusinessRuleException("Name and number already set (immutable)");
+                }
+
+                if (collectivityRepository.isNameUsed(conn, info.getName(), id)) {
+                    throw new BusinessRuleException("Name already used by another collectivity");
+                }
+
+                if (collectivityRepository.isNumberUsed(conn, info.getNumber(), id)) {
+                    throw new BusinessRuleException("Number already used by another collectivity");
+                }
+
+                collectivityRepository.updateNameAndNumber(conn, id, info.getName(), info.getNumber());
+
+                CollectivityEntity updated = collectivityRepository.findById(conn, id)
+                        .orElseThrow(() -> new ResourceNotFoundException("Collectivity not found after update"));
+                conn.commit();
+
+                return toCollectivityDto(updated, conn);
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw new RuntimeException(e);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
-        List<AccountEntity> accounts = accountRepository.findByEntityWithBalanceAtDate("COLLECTIVITY", collectivityId, atDate);
-        return accounts.stream().map(this::mapToFinancialAccountResponse).collect(Collectors.toList());
     }
 
-    private FinancialAccountResponse mapToFinancialAccountResponse(AccountEntity account) {
-        FinancialAccountResponse response = new FinancialAccountResponse();
-        response.setId(account.getId());
-        response.setAccountType(account.getAccountType());
-        response.setAccountHolderName(account.getAccountName());
-        response.setAccountHolderName(account.getAccountHolderName());
-        response.setBankName(account.getBankName());
-        response.setMobileMoneyService(account.getMobileMoneyService());
-        response.setPhoneNumber(account.getPhoneNumber());
-        response.setBalanceAtDate(account.getBalance());
-        response.setCurrency(account.getCurrency());
-        return response;
-    }
+    public Collectivity getCollectivityById(String idStr) {
+        try (Connection conn = dataSource.getConnection()) {
+            String id = idStr;
 
-    public CollectivityResponse mapToResponse(CollectivityEntity collectivity) {
-        CollectivityResponse response = new CollectivityResponse();
-        response.setId(collectivity.getId());
-        response.setNumber(collectivity.getNumber());
-        response.setName(collectivity.getName());
-        response.setLocation(collectivity.getLocation());
-        response.setSpecialisation(collectivity.getSpecialisation());
-        response.setCreationDate(collectivity.getCreationDate());
-        response.setStatus(collectivity.getStatus().name());
-        response.setMemberCount(collectivityRepository.countMembers(collectivity.getId()));
-        List<MemberEntity> members = memberRepository.findByCollectivityId(collectivity.getId());
-        if (members != null && !members.isEmpty()) {
-            List<MemberResponse> memberResponses = members.stream()
-                    .map(this::mapMemberToResponse)
-                    .collect(Collectors.toList());
-            response.setMembers(memberResponses);
+            CollectivityEntity entity = collectivityRepository.findByIdWithDetails(conn, id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Collectivity not found with id: " + idStr));
+
+            return toCollectivityDto(entity, conn);
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error while fetching collectivity", e);
         }
-        return response;
-    }
-    private MemberResponse mapMemberToResponse(MemberEntity member) {
-        MemberResponse response = new MemberResponse();
-        response.setId(member.getId());
-        response.setFirstName(member.getFirstName());
-        response.setLastName(member.getLastName());
-        response.setBirthDate(member.getBirthDate());
-        response.setGender(member.getGender().name());
-        response.setAddress(member.getAddress());
-        response.setProfession(member.getProfession());
-        response.setPhone(member.getPhoneNumber());
-        response.setEmail(member.getEmail());
-        response.setMembershipDate(member.getMembershipDate());
-        response.setRole(member.getRole().name());
-        response.setCollectivityId(member.getCollectivityId());
-        return response;
     }
 }

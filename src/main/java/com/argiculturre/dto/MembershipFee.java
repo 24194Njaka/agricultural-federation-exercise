@@ -1,18 +1,15 @@
-package com.argiculturre.entity;
+package com.argiculturre.dto;
 
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class MembershipFeeEntity {
+public class MembershipFee {
     private String id;
-    private String collectivityId;
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate eligibleFrom;
     private String frequency;
     private BigDecimal amount;
