@@ -125,8 +125,7 @@ public class FinancialAccountRepository {
         return accounts;
     }
 
-    // MODIFICATION 7: findByCollectivityIdAndDate avec String collectivityId
-    public List<FinancialAccount> findByCollectivityIdAndDate(Connection conn, String collectivityId, LocalDate atDate) throws SQLException {
+     public List<FinancialAccount> findByCollectivityIdAndDate(Connection conn, String collectivityId, LocalDate atDate) throws SQLException {
         String sql = "SELECT " +
                 "  fa.id, " +
                 "  fa.type, " +

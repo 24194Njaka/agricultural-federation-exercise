@@ -11,6 +11,12 @@ import java.util.List;
 @Repository
 public class TransactionRepository {
 
+    private final DataSource dataSource;
+
+    public TransactionRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
     public List<TransactionEntity> findByCollectivityIdAndDateRange(Connection conn, String collectivityId, LocalDate from, LocalDate to) throws SQLException {
         String sql = "SELECT id, member_id, collectivity_id, amount, payment_mode, account_credited_id, membership_fee_id, creation_date " +
                 "FROM transaction WHERE collectivity_id = ? AND creation_date BETWEEN ? AND ? " +
@@ -58,5 +64,24 @@ public class TransactionRepository {
             stmt.setDate(8, Date.valueOf(transaction.getCreationDate()));
             stmt.executeUpdate();
         }
+    }
+
+    public Double getTotalContributionsByMember(String memberId, LocalDate from, LocalDate to) {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM transaction " +
+                "WHERE member_id = ? AND creation_date BETWEEN ? AND ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, memberId);
+            ps.setDate(2, Date.valueOf(from));
+            ps.setDate(3, Date.valueOf(to));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble(1);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur getTotalContributionsByMember: " + e.getMessage(), e);
+        }
+        return 0.0;
     }
 }
