@@ -14,6 +14,13 @@ import java.util.Optional;
 @Repository
 public class MembershipFeeRepository {
 
+    private final DataSource dataSource;
+
+    public MembershipFeeRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    // Méthode avec Connection (existante)
     public List<MembershipFeeEntity> findByCollectivityId(Connection conn, String collectivityId) throws SQLException {
         String sql = "SELECT id, collectivity_id, eligible_from, frequency, amount, label, status " +
                 "FROM membership_fee WHERE collectivity_id = ? ORDER BY eligible_from DESC";
@@ -36,7 +43,57 @@ public class MembershipFeeRepository {
         return fees;
     }
 
-    // MODIFICATION 2: insert avec id explicite (plus de RETURNING id)
+    // AJOUTER CETTE MÉTHODE - sans Connection
+    public List<MembershipFeeEntity> findActiveByCollectivity(String collectivityId) {
+        List<MembershipFeeEntity> fees = new ArrayList<>();
+        String sql = "SELECT id, collectivity_id, eligible_from, frequency, amount, label, status " +
+                "FROM membership_fee WHERE collectivity_id = ? AND status = 'ACTIVE'";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, collectivityId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    MembershipFeeEntity fee = new MembershipFeeEntity();
+                    fee.setId(rs.getString("id"));
+                    fee.setCollectivityId(rs.getString("collectivity_id"));
+                    fee.setEligibleFrom(rs.getDate("eligible_from").toLocalDate());
+                    fee.setFrequency(rs.getString("frequency"));
+                    fee.setAmount(rs.getBigDecimal("amount"));
+                    fee.setLabel(rs.getString("label"));
+                    fee.setStatus(rs.getString("status"));
+                    fees.add(fee);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findActiveByCollectivity: " + e.getMessage(), e);
+        }
+        return fees;
+    }
+
+    // Méthode avec Connection (existante) - garder pour compatibilité
+    public List<MembershipFeeEntity> findActiveByCollectivityId(Connection conn, String collectivityId) throws SQLException {
+        List<MembershipFeeEntity> fees = new ArrayList<>();
+        String sql = "SELECT id, collectivity_id, eligible_from, frequency, amount, label, status " +
+                "FROM membership_fee WHERE collectivity_id = ? AND status = 'ACTIVE'";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, collectivityId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    MembershipFeeEntity fee = new MembershipFeeEntity();
+                    fee.setId(rs.getString("id"));
+                    fee.setCollectivityId(rs.getString("collectivity_id"));
+                    fee.setEligibleFrom(rs.getDate("eligible_from").toLocalDate());
+                    fee.setFrequency(rs.getString("frequency"));
+                    fee.setAmount(rs.getBigDecimal("amount"));
+                    fee.setLabel(rs.getString("label"));
+                    fee.setStatus(rs.getString("status"));
+                    fees.add(fee);
+                }
+            }
+        }
+        return fees;
+    }
+
     public void insert(Connection conn, MembershipFeeEntity fee) throws SQLException {
         String sql = "INSERT INTO membership_fee (id, collectivity_id, eligible_from, frequency, amount, label, status) " +
                 "VALUES (?, ?, ?, CAST(? as frequency_enum), ?, ?, CAST(? as activity_status_enum))";
