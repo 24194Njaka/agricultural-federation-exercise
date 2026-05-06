@@ -1,148 +1,168 @@
 package com.argiculturre.service;
 
-import com.argiculturre.dto.request.CreateMemberRequest;
-import com.argiculturre.dto.response.MemberResponse;
+import com.argiculturre.config.DataSource;
+import com.argiculturre.dto.CreateMember;
+import com.argiculturre.dto.Gender;
+import com.argiculturre.dto.Member;
 import com.argiculturre.entity.CollectivityEntity;
 import com.argiculturre.entity.MemberEntity;
-import com.argiculturre.entity.MemberRole;
-import com.argiculturre.entity.SponsorshipEntity;
-import com.argiculturre.entity.TypeGender;
+import com.argiculturre.entity.MembershipEntity;
+import com.argiculturre.entity.ReferenceEntity;
+import com.argiculturre.exception.BusinessRuleException;
+import com.argiculturre.exception.ResourceNotFoundException;
 import com.argiculturre.repository.CollectivityRepository;
 import com.argiculturre.repository.MemberRepository;
-import com.argiculturre.repository.SponsorshipRepository;
-import lombok.RequiredArgsConstructor;
+import com.argiculturre.repository.MembershipRepository;
+import com.argiculturre.repository.ReferenceRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class MemberService {
 
+    private final DataSource dataSource;
     private final MemberRepository memberRepository;
     private final CollectivityRepository collectivityRepository;
-    private final SponsorshipRepository sponsorshipRepository;
+    private final MembershipRepository membershipRepository;
+    private final ReferenceRepository referenceRepository;
 
-    @Transactional
-    public MemberResponse createMember(CreateMemberRequest request) {
-         if (memberRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
-        }
-
-         CollectivityEntity collectivity = null;
-        if (request.getCollectivityId() != null) {
-            collectivity = collectivityRepository.findById(request.getCollectivityId());
-            if (collectivity == null) {
-                throw new RuntimeException("Collectivity not found");
-            }
-        }
-
-        if (request.getCollectivityId() != null && (request.getSponsors() == null || request.getSponsors().size() < 2)) {
-            throw new RuntimeException("Need at least 2 sponsors to join a collectivity");
-        }
-
-        int fromTarget = 0, fromOther = 0;
-        for (CreateMemberRequest.SponsorInfo s : request.getSponsors()) {
-            MemberEntity sponsor = memberRepository.findById(s.getSponsorId());
-            if (sponsor == null) {
-                throw new RuntimeException("Sponsor not found: " + s.getSponsorId());
-            }
-            if (sponsor.getRole() != MemberRole.CONFIRMED_MEMBER) {
-                throw new RuntimeException("Sponsor must be CONFIRMED_MEMBER");
-            }
-            if (sponsor.getMembershipDate().plusDays(90).isAfter(LocalDate.now())) {
-                throw new RuntimeException("Sponsor needs 90+ days seniority");
-            }
-
-            if (collectivity != null && sponsor.getCollectivityId() != null
-                    && sponsor.getCollectivityId().equals(collectivity.getId())) {
-                fromTarget++;
-            } else {
-                fromOther++;
-            }
-        }
-
-        if (collectivity != null && fromTarget < fromOther) {
-            throw new RuntimeException("Sponsors from target collectivity must be >= others");
-        }
-
-         MemberEntity member = new MemberEntity();
-        member.setFirstName(request.getFirstName());
-        member.setLastName(request.getLastName());
-        member.setBirthDate(request.getBirthDate());
-        member.setGender(TypeGender.valueOf(request.getGender()));
-        member.setAddress(request.getAddress());
-        member.setProfession(request.getProfession());
-        member.setPhoneNumber(request.getPhone());
-        member.setEmail(request.getEmail());
-        member.setMembershipDate(LocalDate.now());
-        member.setRole(MemberRole.JUNIOR_MEMBER);
-        if (collectivity != null) {
-            member.setCollectivityId(collectivity.getId());
-        }
-
-        MemberEntity saved = memberRepository.save(member);
-
-        for (CreateMemberRequest.SponsorInfo s : request.getSponsors()) {
-            SponsorshipEntity sponsorship = new SponsorshipEntity();
-            sponsorship.setMemberId(saved.getId());
-            sponsorship.setSponsorId(s.getSponsorId());
-            sponsorship.setRelationship(s.getRelationship());
-            sponsorship.setSponsorshipDate(LocalDate.now());
-            sponsorshipRepository.save(sponsorship);
-        }
-
-         return buildResponse(saved, collectivity);
+    public MemberService(DataSource dataSource,
+                         MemberRepository memberRepository,
+                         CollectivityRepository collectivityRepository,
+                         MembershipRepository membershipRepository,
+                         ReferenceRepository referenceRepository) {
+        this.dataSource = dataSource;
+        this.memberRepository = memberRepository;
+        this.collectivityRepository = collectivityRepository;
+        this.membershipRepository = membershipRepository;
+        this.referenceRepository = referenceRepository;
     }
 
-    private MemberResponse buildResponse(MemberEntity member, CollectivityEntity collectivity) {
-        MemberResponse response = new MemberResponse();
-        response.setId(member.getId());
-        response.setFirstName(member.getFirstName());
-        response.setLastName(member.getLastName());
-        response.setBirthDate(member.getBirthDate());
-        response.setGender(member.getGender().name());
-        response.setAddress(member.getAddress());
-        response.setProfession(member.getProfession());
-        response.setPhone(member.getPhoneNumber());
-        response.setEmail(member.getEmail());
-        response.setMembershipDate(member.getMembershipDate());
-        response.setRole(member.getRole().name());
-        if (collectivity != null) {
-            response.setCollectivityId(collectivity.getId());
+    public List<Member> createMembers(List<CreateMember> createList) {
+        List<Member> results = new ArrayList<>();
+        for (CreateMember create : createList) {
+            results.add(createSingleMember(create));
         }
-        return response;
-    }
-    public List<MemberEntity> getAllMembers() {
-        return memberRepository.findAll();
+        return results;
     }
 
-    public MemberEntity getMemberById(String id) {
-        MemberEntity member = memberRepository.findById(id);
-        if (member == null) {
-            throw new RuntimeException("Member not found");
+    private Member createSingleMember(CreateMember create) {
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                String collectivityId = create.getCollectivityIdentifier();
+                CollectivityEntity collectivity = collectivityRepository.findById(conn, collectivityId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Collectivity not found"));
+
+                int totalMembers = memberRepository.countAll(conn);
+                boolean isFirstMember = (totalMembers == 0);
+
+                List<String> refereeIds = null;
+                if (!isFirstMember) {
+                    List<String> refereeIdsStr = create.getReferees();
+                    if (refereeIdsStr == null || refereeIdsStr.size() < 2) {
+                        throw new BusinessRuleException("At least 2 referees required");
+                    }
+                    refereeIds = refereeIdsStr;
+
+                    for (String rid : refereeIds) {
+                        if (!membershipRepository.hasSeniorRole(conn, rid)) {
+                            throw new BusinessRuleException("Referee " + rid + " is not a SENIOR member");
+                        }
+                    }
+
+                    int countInTarget = membershipRepository.countRefereesInCollectivity(conn, refereeIds, collectivityId);
+                    int countOutside = refereeIds.size() - countInTarget;
+                    if (countInTarget < countOutside) {
+                        throw new BusinessRuleException("Number of referees from target collectivity must be at least equal to outsiders");
+                    }
+                }
+
+                if (create.getRegistrationFeePaid() == null || !create.getRegistrationFeePaid()) {
+                    throw new BusinessRuleException("Registration fee must be paid");
+                }
+                if (create.getMembershipDuesPaid() == null || !create.getMembershipDuesPaid()) {
+                    throw new BusinessRuleException("Membership dues must be paid");
+                }
+
+                String memberId = generateMemberId();
+                MemberEntity newMember = new MemberEntity();
+                newMember.setId(memberId);
+                newMember.setFirstName(create.getFirstName());
+                newMember.setLastName(create.getLastName());
+                newMember.setBirthDate(create.getBirthDate());
+                newMember.setGender(create.getGender().name());
+                newMember.setAddress(create.getAddress());
+                newMember.setProfession(create.getProfession());
+                newMember.setPhoneNumber(create.getPhoneNumber());
+                newMember.setEmail(create.getEmail());
+                newMember.setDateAdhesionFederation(LocalDate.now());
+                memberRepository.insert(conn, newMember);
+
+                MembershipEntity membership = new MembershipEntity();
+                membership.setMemberId(memberId);
+                membership.setCollectivityId(collectivityId);
+                membership.setOccupation(create.getOccupation().name());
+                membership.setRegistrationFeePaid(true);
+                membership.setMembershipDuesPaid(true);
+                membership.setDateAdhesion(LocalDate.now());
+                membership.setPaymentDate(LocalDate.now());
+                membershipRepository.insert(conn, membership);
+
+                if (!isFirstMember && refereeIds != null && !refereeIds.isEmpty()) {
+                    LocalDate now = LocalDate.now();
+                    for (String sponsorId : refereeIds) {
+                        ReferenceEntity ref = new ReferenceEntity();
+                        ref.setCandidateId(memberId);
+                        ref.setSponsorId(sponsorId);
+                        ref.setRelationNature("unknown");
+                        ref.setSponsorshipDate(now);
+                        referenceRepository.insert(conn, ref);
+                    }
+                }
+
+                List<Member> refereeDtos = new ArrayList<>();
+                if (!isFirstMember && refereeIds != null) {
+                    for (String rid : refereeIds) {
+                        Optional<MemberEntity> optRef = memberRepository.findById(conn, rid);
+                        optRef.ifPresent(refEntity -> refereeDtos.add(toMemberDto(refEntity, null)));
+                    }
+                }
+
+                Member response = toMemberDto(newMember, refereeDtos);
+                conn.commit();
+                return response;
+            } catch (SQLException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error", e);
         }
-        return member;
     }
 
-    public MemberResponse mapToResponse(MemberEntity member) {
-        MemberResponse response = new MemberResponse();
-        response.setId(member.getId());
-        response.setFirstName(member.getFirstName());
-        response.setLastName(member.getLastName());
-        response.setBirthDate(member.getBirthDate());
-        response.setGender(member.getGender().name());
-        response.setAddress(member.getAddress());
-        response.setProfession(member.getProfession());
-        response.setPhone(member.getPhoneNumber());
-        response.setEmail(member.getEmail());
-        response.setMembershipDate(member.getMembershipDate());
-        response.setRole(member.getRole().name());
-        if (member.getCollectivityId() != null) {
-            response.setCollectivityId(member.getCollectivityId());
-        }
-        return response;
+    private String generateMemberId() {
+        return "M" + UUID.randomUUID().toString().substring(0, 8);
     }
 
+    private Member toMemberDto(MemberEntity entity, List<Member> referees) {
+        Member dto = new Member();
+        dto.setId(entity.getId());
+        dto.setFirstName(entity.getFirstName());
+        dto.setLastName(entity.getLastName());
+        dto.setBirthDate(entity.getBirthDate());
+        dto.setGender(Gender.valueOf(entity.getGender()));
+        dto.setAddress(entity.getAddress());
+        dto.setProfession(entity.getProfession());
+        dto.setPhoneNumber(entity.getPhoneNumber());
+        dto.setEmail(entity.getEmail());
+        dto.setReferees(referees);
+        return dto;
+    }
 }
