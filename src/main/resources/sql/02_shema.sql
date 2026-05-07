@@ -328,3 +328,80 @@ UNION ALL
 SELECT 'membership_fee', COUNT(*) FROM membership_fee
 UNION ALL
 SELECT 'transaction', COUNT(*) FROM transaction;
+
+
+
+
+
+
+
+
+
+
+-- Insertion dans la table parente financial_account
+INSERT INTO financial_account (id, type, amount, collectivity_id) VALUES
+                                                                      ('C3-A-BANK-1', 'BANK', 0, 'col-3'),
+                                                                      ('C3-A-BANK-2', 'BANK', 0, 'col-3'),
+                                                                      ('C3-A-MOBILE-1', 'MOBILE_BANKING', 0, 'col-3');
+
+-- Insertion dans la table fille bank_account
+INSERT INTO bank_account (id, holder_name, bank_name, bank_code, branch_code, account_number, account_key) VALUES
+                                                                                                               ('C3-A-BANK-1', 'Koto', 'BMOI', 00004, 00001, 1234567890, 12),
+                                                                                                               ('C3-A-BANK-2', 'Naivo', 'BRED', 00008, 00003, 4567890123, 58);
+
+-- Insertion dans la table fille mobile_banking_account
+INSERT INTO mobile_banking_account (id, holder_name, mobile_service, mobile_number) VALUES
+    ('C3-A-MOBILE-1', 'Kolo', 'MVOLA', '0341889612');
+
+
+-- Collectivité 1
+INSERT INTO membership_fee (id, collectivity_id, label, status, frequency, eligible_from, amount) VALUES
+                                                                                                      ('cot-1', 'col-1', 'Cotisation annuelle', 'ACTIVE', 'ANNUALLY', '2026-01-01', 200000),
+                                                                                                      ('cot-2', 'col-1', 'Famangiana', 'ACTIVE', 'PUNCTUALLY', '2026-04-30', 20000);
+
+-- Collectivité 2
+INSERT INTO membership_fee (id, collectivity_id, label, status, frequency, eligible_from, amount) VALUES
+                                                                                                      ('cot-3', 'col-2', 'Cotisation annuelle', 'ACTIVE', 'ANNUALLY', '2026-01-01', 200000),
+                                                                                                      ('cot-4', 'col-2', 'Cotisation 2025', 'INACTIVE', 'ANNUALLY', '2025-01-01', 100000);
+
+-- Collectivité 3
+INSERT INTO membership_fee (id, collectivity_id, label, status, frequency, eligible_from, amount) VALUES
+    ('cot-5', 'col-3', 'Cotisation mensuelle', 'ACTIVE', 'MONTHLY', '2026-04-01', 25000);
+
+-- Collectivité 1 (4 membres)
+INSERT INTO member (id, first_name, last_name, birth_date, gender, email, date_adhesion_federation) VALUES
+                                                                                                        ('C1-M9', 'Jean', 'Dupont', '1990-05-15', 'MALE', 'jean.dupont@mail.com', '2026-01-01'),
+                                                                                                        ('C1-M10', 'Marie', 'Rasoa', '1992-08-20', 'FEMALE', 'marie.rasoa@mail.com', '2026-01-01'),
+                                                                                                        ('C1-M11', 'Luc', 'Rakoto', '1985-03-10', 'MALE', 'luc.rakoto@mail.com', '2026-01-01'),
+                                                                                                        ('C1-M12', 'Alice', 'Ranaivo', '1995-12-01', 'FEMALE', 'alice.ranaivo@mail.com', '2026-01-01');
+
+INSERT INTO membership (member_id, collectivity_id, occupation, registration_fee_paid, membership_dues_paid, date_adhesion) VALUES
+                                                                                                                                ('C1-M9', 'col-1', 'JUNIOR', true, true, '2026-04-01'),
+                                                                                                                                ('C1-M10', 'col-1', 'JUNIOR', true, true, '2026-04-01'),
+                                                                                                                                ('C1-M11', 'col-1', 'JUNIOR', true, true, '2026-05-01'),
+                                                                                                                                ('C1-M12', 'col-1', 'JUNIOR', true, true, '2026-06-01');
+
+-- Collectivité 2 (3 membres)
+INSERT INTO member (id, first_name, last_name, birth_date, gender, email, date_adhesion_federation) VALUES
+                                                                                                        ('C2-M9', 'Pierre', 'Randria', '1988-02-14', 'MALE', 'pierre.randria@mail.com', '2026-01-01'),
+                                                                                                        ('C2-M10', 'Sitraka', 'Andria', '1993-11-25', 'FEMALE', 'sitraka.andria@mail.com', '2026-01-01'),
+                                                                                                        ('C2-M11', 'Theo', 'Zaka', '1980-07-07', 'MALE', 'theo.zaka@mail.com', '2026-01-01');
+
+INSERT INTO membership (member_id, collectivity_id, occupation, registration_fee_paid, membership_dues_paid, date_adhesion) VALUES
+                                                                                                                                ('C2-M9', 'col-2', 'JUNIOR', true, true, '2026-03-01'),
+                                                                                                                                ('C2-M10', 'col-2', 'JUNIOR', true, true, '2026-03-01'),
+                                                                                                                                ('C2-M11', 'col-2', 'JUNIOR', true, true, '2026-03-01');
+-- Basé sur le Tableau 15 (Collectivité 1)
+INSERT INTO transaction (id, member_id, collectivity_id, amount, payment_mode, account_credited_id, creation_date) VALUES
+                                                                                                                       ('TX-001', 'C1-M1', 'col-1', 200000, 'CASH', 'C1-A-CASH', '2026-01-01'),
+                                                                                                                       ('TX-002', 'C1-M2', 'col-1', 200000, 'CASH', 'C1-A-CASH', '2026-01-01'),
+                                                                                                                       ('TX-003', 'C1-M3', 'col-1', 200000, 'MOBILE_BANKING', 'C1-A-MOBILE-1', '2026-01-01'),
+                                                                                                                       ('TX-004', 'C1-M4', 'col-1', 200000, 'MOBILE_BANKING', 'C1-A-MOBILE-1', '2026-01-01'),
+                                                                                                                       ('TX-005', 'C1-M5', 'col-1', 150000, 'MOBILE_BANKING', 'C1-A-MOBILE-1', '2026-01-01');
+
+-- Basé sur le Tableau 17 (Collectivité 3 - Bank Transfers)
+INSERT INTO transaction (id, member_id, collectivity_id, amount, payment_mode, account_credited_id, creation_date) VALUES
+                                                                                                                       ('TX-101', 'C3-M1', 'col-3', 25000, 'BANK_TRANSFER', 'C3-A-BANK-1', '2026-04-01'),
+                                                                                                                       ('TX-102', 'C3-M5', 'col-3', 25000, 'BANK_TRANSFER', 'C3-A-BANK-2', '2026-04-01'),
+                                                                                                                       ('TX-103', 'C3-M7', 'col-3', 25000, 'CASH', 'C3-A-CASH', '2026-04-01');
+
