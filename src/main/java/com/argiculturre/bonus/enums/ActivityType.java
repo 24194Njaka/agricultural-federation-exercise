@@ -1,4 +1,4 @@
-package com.argiculturre.dto.enums;
+package com.argiculturre.bonus.enums;
 
 public enum ActivityType {
     MEETING, TRAINING, OTHER
