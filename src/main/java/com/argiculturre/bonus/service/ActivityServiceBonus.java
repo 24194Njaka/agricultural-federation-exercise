@@ -2,20 +2,23 @@ package com.argiculturre.bonus.service;
 
 import com.argiculturre.bonus.dto.*;
 import com.argiculturre.bonus.repository.ActivityRepositoryBonus;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
-
 public class ActivityServiceBonus {
+
     private final ActivityRepositoryBonus activityRepository;
 
+    // Constructeur explicite
+    public ActivityServiceBonus(ActivityRepositoryBonus activityRepository) {
+        this.activityRepository = activityRepository;
+    }
+
     public List<CollectivityActivityBonus> createActivities(String collectivityId,
-                                                       List<CreateCollectivityActivityBonus> activities) {
+                                                            List<CreateCollectivityActivityBonus> activities) {
         try {
             List<CollectivityActivityBonus> result = new ArrayList<>();
             for (CreateCollectivityActivityBonus activity : activities) {
@@ -46,7 +49,7 @@ public class ActivityServiceBonus {
     }
 
     public List<ActivityMemberAttendanceBonus> markAttendance(String collectivityId, String activityId,
-                                                         List<CreateActivityMemberAttendanceBonus> attendances) {
+                                                              List<CreateActivityMemberAttendanceBonus> attendances) {
         try {
             activityRepository.saveAttendance(collectivityId, activityId, attendances);
             return getAttendance(collectivityId, activityId);

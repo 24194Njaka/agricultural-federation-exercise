@@ -2,7 +2,6 @@ package com.argiculturre.bonus.controller;
 
 import com.argiculturre.bonus.dto.*;
 import com.argiculturre.bonus.service.ActivityServiceBonus;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,11 +9,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/collectivities")
-@RequiredArgsConstructor
-
-
 public class ActivityControllerBonus {
+
     private final ActivityServiceBonus activityService;
+
+    // Constructeur explicite
+    public ActivityControllerBonus(ActivityServiceBonus activityService) {
+        this.activityService = activityService;
+    }
 
     @PostMapping("/{id}/activities")
     public ResponseEntity<List<CollectivityActivityBonus>> createActivities(
@@ -51,5 +53,4 @@ public class ActivityControllerBonus {
         List<ActivityMemberAttendanceBonus> attendances = activityService.getAttendance(collectivityId, activityId);
         return ResponseEntity.ok(attendances);
     }
-
 }

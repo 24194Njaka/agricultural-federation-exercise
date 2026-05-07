@@ -1,21 +1,22 @@
 package com.argiculturre.bonus.repository;
 
+import com.argiculturre.config.DataSource;
 import com.argiculturre.bonus.dto.*;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import javax.sql.DataSource;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 @Repository
-@RequiredArgsConstructor
-
-
 public class ActivityRepositoryBonus {
 
     private final DataSource dataSource;
+
+    // Constructeur explicite (injection par constructeur)
+    public ActivityRepositoryBonus(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     // Créer une activité
     public CollectivityActivityBonus createActivity(String collectivityId, CreateCollectivityActivityBonus activity) throws SQLException {
@@ -65,12 +66,9 @@ public class ActivityRepositoryBonus {
     // Récupérer toutes les activités d'une collectivité
     public List<CollectivityActivityBonus> getActivitiesByCollectivityId(String collectivityId) throws SQLException {
         String sql = """
-            SELECT a.id, a.label, a.activity_type, a.week_ordinal, a.day_of_week, a.executive_date,
-                   COALESCE(array_agg(ao.occupation), '{}') as occupations
+            SELECT a.id, a.label, a.activity_type, a.week_ordinal, a.day_of_week, a.executive_date
             FROM activity a
-            LEFT JOIN activity_occupation ao ON a.id = ao.activity_id
             WHERE a.collectivity_id = ? AND a.status = 'ACTIVE'
-            GROUP BY a.id
             """;
 
         List<CollectivityActivityBonus> activities = new ArrayList<>();
@@ -87,12 +85,9 @@ public class ActivityRepositoryBonus {
                 activity.setLabel(rs.getString("label"));
                 activity.setActivityType(rs.getString("activity_type"));
 
-                // Récupérer les occupations
-                Array occupationsArray = rs.getArray("occupations");
-                if (occupationsArray != null) {
-                    String[] occupations = (String[]) occupationsArray.getArray();
-                    activity.setMemberOccupationConcerned(List.of(occupations));
-                }
+                // Récupérer les occupations pour cette activité
+                List<String> occupations = getActivityOccupations(conn, activity.getId());
+                activity.setMemberOccupationConcerned(occupations);
 
                 // Reconstruire recurrence rule si existe
                 int weekOrdinal = rs.getInt("week_ordinal");
@@ -109,6 +104,20 @@ public class ActivityRepositoryBonus {
             }
         }
         return activities;
+    }
+
+    // Récupérer les occupations d'une activité
+    private List<String> getActivityOccupations(Connection conn, String activityId) throws SQLException {
+        String sql = "SELECT occupation FROM activity_occupation WHERE activity_id = ?";
+        List<String> occupations = new ArrayList<>();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, activityId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                occupations.add(rs.getString("occupation"));
+            }
+        }
+        return occupations;
     }
 
     // Enregistrer la présence des membres
