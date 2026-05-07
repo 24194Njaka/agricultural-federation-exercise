@@ -11,10 +11,10 @@ public class BankAccount implements FinancialAccount {
     private String id;
     private String holderName;
     private String bankName;
-    private Integer bankCode;
-    private Integer bankBranchCode;
-    private Integer bankAccountNumber;
-    private Integer bankAccountKey;
+    private String bankCode;
+    private String bankBranchCode;
+    private String bankAccountNumber;
+    private String bankAccountKey;
     private BigDecimal amount;
     private String type = "BANK";
 
