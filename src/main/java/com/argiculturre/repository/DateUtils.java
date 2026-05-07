@@ -1,46 +1,40 @@
 package com.argiculturre.repository;
-
 import java.time.LocalDate;
-import java.time.Period;
+import java.time.temporal.ChronoUnit;
 
 public class DateUtils {
 
     /**
      * Calcule le nombre d'occurrences d'une cotisation sur une période donnée
+     * @param startDate Date de début de la période
+     * @param endDate Date de fin de la période
+     * @param frequency Fréquence de la cotisation (WEEKLY, MONTHLY, ANNUALLY, PUNCTUALLY)
+     * @param eligibleFrom Date à partir de laquelle la cotisation est éligible
+     * @return Nombre d'occurrences
      */
     public static int getOccurrenceCount(LocalDate startDate, LocalDate endDate, String frequency, LocalDate eligibleFrom) {
-        // La cotisation n'est pas encore éligible
-        if (eligibleFrom != null && endDate.isBefore(eligibleFrom)) {
+        // La période commence au plus tard à la date d'éligibilité
+        LocalDate effectiveStart = startDate;
+        if (eligibleFrom != null && eligibleFrom.isAfter(startDate)) {
+            effectiveStart = eligibleFrom;
+        }
+
+        // Si la date d'éligibilité est après la fin de la période, retourner 0
+        if (eligibleFrom != null && eligibleFrom.isAfter(endDate)) {
             return 0;
         }
 
-        LocalDate effectiveStart = eligibleFrom != null && eligibleFrom.isAfter(startDate) ? eligibleFrom : startDate;
-
         switch (frequency.toUpperCase()) {
             case "WEEKLY":
-                return (int) java.time.Duration.between(effectiveStart.atStartOfDay(), endDate.atStartOfDay()).toDays() / 7 + 1;
+                return (int) ChronoUnit.WEEKS.between(effectiveStart, endDate) + 1;
             case "MONTHLY":
-                return Period.between(effectiveStart, endDate).getMonths() + 1;
+                return (int) ChronoUnit.MONTHS.between(effectiveStart, endDate) + 1;
             case "ANNUALLY":
-                return Period.between(effectiveStart, endDate).getYears() + 1;
+                return (int) ChronoUnit.YEARS.between(effectiveStart, endDate) + 1;
             case "PUNCTUALLY":
                 return 1;
             default:
                 return 1;
         }
-    }
-
-    /**
-     * Calcule le nombre de mois entre deux dates
-     */
-    public static int monthsBetween(LocalDate start, LocalDate end) {
-        return Period.between(start, end).getMonths() + (Period.between(start, end).getYears() * 12);
-    }
-
-    /**
-     * Calcule le nombre d'années entre deux dates
-     */
-    public static int yearsBetween(LocalDate start, LocalDate end) {
-        return Period.between(start, end).getYears();
     }
 }

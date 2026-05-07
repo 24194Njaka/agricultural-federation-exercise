@@ -18,5 +18,6 @@ public class MemberEntity {
     private String profession;
     private String phoneNumber;
     private String email;
+    private String occupation;
     private LocalDate dateAdhesionFederation;
 }
