@@ -76,16 +76,15 @@ public class FinancialAccountRepository {
                 account.setAmount(amount);
                 account.setHolderName(rs.getString("holder_name"));
                 account.setBankName(rs.getString("bank_name"));
-                account.setBankCode(rs.getInt("bank_code"));
-                account.setBankBranchCode(rs.getInt("branch_code"));
-                account.setBankAccountNumber(rs.getInt("account_number"));
-                account.setBankAccountKey(rs.getInt("account_key"));
+                account.setBankCode(rs.getString("bank_code"));           // ← String
+                account.setBankBranchCode(rs.getString("branch_code"));   // ← String
+                account.setBankAccountNumber(rs.getString("account_number")); // ← String
+                account.setBankAccountKey(rs.getString("account_key"));   // ← String
                 return account;
             }
             return null;
         }
     }
-
     public boolean isAccountBelongsToCollectivity(Connection conn, String accountId, String collectivityId) throws SQLException {
         String sql = "SELECT 1 FROM financial_account WHERE id = ? AND collectivity_id = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -157,7 +156,9 @@ public class FinancialAccountRepository {
     private FinancialAccount getAccountWithDetails(Connection conn, String id, String type, BigDecimal amount) throws SQLException {
         switch (type) {
             case "CASH":
-                CashAccount cashAccount = new CashAccount(id, amount);
+                CashAccount cashAccount = new CashAccount();
+                cashAccount.setId(id);
+                cashAccount.setAmount(amount);
                 cashAccount.setType("CASH");
                 return cashAccount;
 
@@ -191,10 +192,10 @@ public class FinancialAccountRepository {
                         bankAccount.setType("BANK");
                         bankAccount.setHolderName(rs.getString("holder_name"));
                         bankAccount.setBankName(rs.getString("bank_name"));
-                        bankAccount.setBankCode(rs.getInt("bank_code"));
-                        bankAccount.setBankBranchCode(rs.getInt("branch_code"));
-                        bankAccount.setBankAccountNumber(rs.getInt("account_number"));
-                        bankAccount.setBankAccountKey(rs.getInt("account_key"));
+                        bankAccount.setBankCode(rs.getString("bank_code"));
+                        bankAccount.setBankBranchCode(rs.getString("branch_code"));
+                        bankAccount.setBankAccountNumber(rs.getString("account_number"));
+                        bankAccount.setBankAccountKey(rs.getString("account_key"));
                         return bankAccount;
                     }
                 }
