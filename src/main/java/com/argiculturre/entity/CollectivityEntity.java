@@ -10,11 +10,11 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class CollectivityEntity {
     private String id;
-    private String number;
-    private String name;
     private String location;
-    private String specialisation;
-    private LocalDate creationDate;
-    private TypeStatus status;
-    private LocalDate authorizationDate;
+    private String specialiteAgricole;
+    private Integer annualDuesAmount;
+    private LocalDate dateCreation;
+    private Boolean federationApproval;
+    private String name;
+    private Integer number;
 }

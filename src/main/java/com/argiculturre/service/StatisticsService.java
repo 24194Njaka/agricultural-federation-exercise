@@ -1,9 +1,12 @@
 package com.argiculturre.service;
 
-import com.argiculturre.dto.request.MemberContributionStatistic;
-import com.argiculturre.dto.response.*;
-import com.argiculturre.dto.response.CollectivityGlobalStatistic;
-import com.argiculturre.entity.*;
+import com.argiculturre.dto.CollectivityGlobalStatistic;
+import com.argiculturre.dto.CollectivityStatisticsResponse;
+import com.argiculturre.dto.FederationStatisticsResponse;
+import com.argiculturre.dto.MemberContributionStatistic;
+import com.argiculturre.entity.CollectivityEntity;
+import com.argiculturre.entity.MemberEntity;
+import com.argiculturre.entity.MembershipFeeEntity;
 import com.argiculturre.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +23,24 @@ public class StatisticsService {
     private final TransactionRepository transactionRepository;
     private final MembershipFeeRepository membershipFeeRepository;
 
-    // GET /collectivities/{id}/statistics
+    private double calculateTotalRequiredAmount(List<MembershipFeeEntity> activeFees, LocalDate from, LocalDate to) {
+        double total = 0.0;
+        for (MembershipFeeEntity fee : activeFees) {
+            int occurrences = DateUtils.getOccurrenceCount(from, to, fee.getFrequency(), fee.getEligibleFrom());
+            total += occurrences * fee.getAmount().doubleValue();
+        }
+        return total;
+    }
+
+    private double calculateRequiredPerMember(List<MembershipFeeEntity> activeFees, LocalDate from, LocalDate to) {
+        double total = 0.0;
+        for (MembershipFeeEntity fee : activeFees) {
+            int occurrences = DateUtils.getOccurrenceCount(from, to, fee.getFrequency(), fee.getEligibleFrom());
+            total += occurrences * fee.getAmount().doubleValue();
+        }
+        return total;
+    }
+
     public CollectivityStatisticsResponse getCollectivityStatistics(String collectivityId, LocalDate from, LocalDate to) {
         CollectivityEntity collectivity = collectivityRepository.findById(collectivityId);
         if (collectivity == null) {
@@ -28,19 +48,15 @@ public class StatisticsService {
         }
 
         List<MemberEntity> members = memberRepository.findByCollectivityId(collectivityId);
+        List<MembershipFeeEntity> activeFees = membershipFeeRepository.findActiveByCollectivity(collectivityId);
+
+         double totalRequiredAmount = calculateTotalRequiredAmount(activeFees, from, to);
+
         List<MemberContributionStatistic> memberStats = new ArrayList<>();
 
-        // Récupérer les cotisations actives
-        List<MembershipFeeEntity> activeFees = membershipFeeRepository.findActiveByCollectivity(collectivityId);
-        double totalRequiredAmount = activeFees.stream()
-                .mapToDouble(MembershipFeeEntity::getAmount)
-                .sum();
-
         for (MemberEntity member : members) {
-            // Montant encaissé
             Double totalContributions = transactionRepository.getTotalContributionsByMember(member.getId(), from, to);
 
-            // Montant impayé = cotisations actives - montant déjà payé
             double pendingAmount = Math.max(0, totalRequiredAmount - totalContributions);
 
             MemberContributionStatistic stats = new MemberContributionStatistic();
@@ -56,11 +72,10 @@ public class StatisticsService {
         response.setCollectivityName(collectivity.getName());
         response.setStartDate(from);
         response.setEndDate(to);
-        response.setMemberContributionStatistics(memberStats);  // ← Utiliser memberContributionStatistics
+        response.setMemberContributionStatistics(memberStats);
         return response;
     }
 
-    // GET /collectivities/statistics
     public FederationStatisticsResponse getFederationStatistics(LocalDate from, LocalDate to) {
         List<CollectivityEntity> collectivities = collectivityRepository.findAll();
         List<CollectivityGlobalStatistic> statsList = new ArrayList<>();
@@ -69,12 +84,8 @@ public class StatisticsService {
             List<MemberEntity> members = memberRepository.findByCollectivityId(collectivity.getId());
             List<MembershipFeeEntity> activeFees = membershipFeeRepository.findActiveByCollectivity(collectivity.getId());
 
-            // Calcul du montant total requis par membre
-            double totalRequiredPerMember = activeFees.stream()
-                    .mapToDouble(MembershipFeeEntity::getAmount)
-                    .sum();
+            double totalRequiredPerMember = calculateRequiredPerMember(activeFees, from, to);
 
-            // Compter les membres à jour (payé >= requis)
             int membersUpToDate = 0;
             int newMembersCount = 0;
 
@@ -85,10 +96,9 @@ public class StatisticsService {
                     membersUpToDate++;
                 }
 
-                // Nouveaux adhérents (membres inscrits pendant la période)
-                if (member.getMembershipDate() != null &&
-                        !member.getMembershipDate().isBefore(from) &&
-                        !member.getMembershipDate().isAfter(to)) {
+                if (member.getDateAdhesionFederation() != null &&
+                        !member.getDateAdhesionFederation().isBefore(from) &&
+                        !member.getDateAdhesionFederation().isAfter(to)) {
                     newMembersCount++;
                 }
             }

@@ -1,7 +1,7 @@
 package com.argiculturre.controller;
 
-import com.argiculturre.dto.response.CollectivityStatisticsResponse;
-import com.argiculturre.dto.response.FederationStatisticsResponse;
+import com.argiculturre.dto.CollectivityStatisticsResponse;
+import com.argiculturre.dto.FederationStatisticsResponse;
 import com.argiculturre.service.StatisticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -16,9 +16,9 @@ public class StatisticsController {
 
     private final StatisticsService statisticsService;
 
-     @GetMapping("/{id}/statistics")
+    @GetMapping("/{id}/statistics")
     public ResponseEntity<CollectivityStatisticsResponse> getCollectivityStatistics(
-            @PathVariable String id,
+            @PathVariable("id") String id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         CollectivityStatisticsResponse response = statisticsService.getCollectivityStatistics(id, from, to);
