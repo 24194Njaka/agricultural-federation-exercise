@@ -1,0 +1,275 @@
+{
+	"info": {
+		"_postman_id": "9e9117e6-af25-41fe-a8bb-99057a17da83",
+		"name": "Federation_api",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "42616235",
+		"_collection_link": "https://lively-satellite-475935.postman.co/workspace/My-Workspace~ef037c23-c105-46de-8805-b12adb4d4d26/collection/42616235-9e9117e6-af25-41fe-a8bb-99057a17da83?action=share&source=collection_link&creator=42616235"
+	},
+	"item": [
+		{
+			"name": "Collectivities_by_col-1",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/collectivities/col-1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"collectivities",
+						"col-1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Collectivities_by_col-2",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/collectivities/col-2",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"collectivities",
+						"col-2"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Collectvities_by_col-3",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/collectivities/col-3",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"collectivities",
+						"col-3"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Statistics_col-1",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/collectivities/col-1/statistics?from=2026-01-01&to=2026-06-30",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"collectivities",
+						"col-1",
+						"statistics"
+					],
+					"query": [
+						{
+							"key": "from",
+							"value": "2026-01-01"
+						},
+						{
+							"key": "to",
+							"value": "2026-06-30"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Statistics_col-2",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/collectivities/col-2/statistics?from=2026-01-01&to=2026-06-30",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"collectivities",
+						"col-2",
+						"statistics"
+					],
+					"query": [
+						{
+							"key": "from",
+							"value": "2026-01-01"
+						},
+						{
+							"key": "to",
+							"value": "2026-06-30"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Statistics-col-3",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/collectivities/col-3/statistics?from=2026-04-01&to=2026-06-30",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"collectivities",
+						"col-3",
+						"statistics"
+					],
+					"query": [
+						{
+							"key": "from",
+							"value": "2026-04-01"
+						},
+						{
+							"key": "to",
+							"value": "2026-06-30"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Statistique_global",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/collectivities/statistics?from=2026-01-01&to=2026-06-30",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"collectivities",
+						"statistics"
+					],
+					"query": [
+						{
+							"key": "from",
+							"value": "2026-01-01"
+						},
+						{
+							"key": "to",
+							"value": "2026-06-30"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Transaction-collectivité-1",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/collectivities/col-1/transactions?from=2026-01-01&to=2026-06-30",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"collectivities",
+						"col-1",
+						"transactions"
+					],
+					"query": [
+						{
+							"key": "from",
+							"value": "2026-01-01"
+						},
+						{
+							"key": "to",
+							"value": "2026-06-30"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Transactions-collectivite-2",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/collectivities/col-2/transactions?from=2026-01-01&to=2026-06-30",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"collectivities",
+						"col-2",
+						"transactions"
+					],
+					"query": [
+						{
+							"key": "from",
+							"value": "2026-01-01"
+						},
+						{
+							"key": "to",
+							"value": "2026-06-30"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Transaction-collectivité-3",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/collectivities/col-3/transactions?from=2026-04-01&to=2026-06-30",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"collectivities",
+						"col-3",
+						"transactions"
+					],
+					"query": [
+						{
+							"key": "from",
+							"value": "2026-04-01"
+						},
+						{
+							"key": "to",
+							"value": "2026-06-30"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Financiers-date",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		}
+	]
+}
