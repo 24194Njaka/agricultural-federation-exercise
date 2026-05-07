@@ -149,15 +149,14 @@ public class CollectivityService {
     }
 
     private Collectivity toCollectivityDto(CollectivityEntity entity, Connection conn) throws SQLException {
-        // Récupérer tous les membres de cette collectivité (via membership)
         List<MembershipEntity> memberships = membershipRepository.findByCollectivityId(conn, entity.getId());
 
-        // Construire la map des membres (id -> Member DTO)
-        Map<String, Member> memberMap = new HashMap<>();
+         Map<String, Member> memberMap = new HashMap<>();
         for (MembershipEntity ms : memberships) {
             Optional<MemberEntity> optMember = memberRepository.findById(conn, ms.getMemberId());
             optMember.ifPresent(memberEntity -> {
                 Member memberDto = toMemberDto(memberEntity);
+                memberDto.setOccupation(MemberOccupation.valueOf(ms.getOccupation()));
                 memberMap.put(memberEntity.getId(), memberDto);
             });
         }
