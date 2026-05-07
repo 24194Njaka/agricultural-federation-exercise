@@ -1,5 +1,7 @@
 package com.argiculturre.dto;
 
+import com.argiculturre.dto.enums.Gender;
+import com.argiculturre.dto.enums.MemberOccupation;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 

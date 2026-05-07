@@ -3,7 +3,7 @@ package com.argiculturre.service;
 import com.argiculturre.config.DataSource;
 import com.argiculturre.dto.CollectivityTransaction;
 import com.argiculturre.dto.FinancialAccount;
-import com.argiculturre.dto.Gender;
+import com.argiculturre.dto.enums.Gender;
 import com.argiculturre.dto.Member;
 import com.argiculturre.entity.MemberEntity;
 import com.argiculturre.entity.TransactionEntity;

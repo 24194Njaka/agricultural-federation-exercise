@@ -2,6 +2,7 @@ package com.argiculturre.service;
 
 import com.argiculturre.config.DataSource;
 import com.argiculturre.dto.*;
+import com.argiculturre.dto.enums.Gender;
 import com.argiculturre.entity.*;
 import com.argiculturre.exception.BusinessRuleException;
 import com.argiculturre.exception.ResourceNotFoundException;
